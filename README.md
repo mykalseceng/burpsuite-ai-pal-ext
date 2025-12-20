@@ -1,104 +1,198 @@
-# Extension Template Project
+# AI Pal - Burp Suite Extension
 
-This project was created by PortSwigger to help you quickly start developing extensions in Java.
+AI Pal is a Burp Suite extension that integrates Large Language Models (LLMs) to assist security researchers with vulnerability analysis, attack vector generation, and HTTP traffic understanding.
 
-## Contents
-* [Before you start](#before-you-start)
-* [Writing your extension](#writing-your-extension)
-* [Building your extension](#building-your-extension)
-* [Loading the JAR file into Burp](#loading-the-jar-file-into-burp)
-* [Sharing your extension](#sharing-your-extension)
+## Features
 
+### Multi-Provider LLM Support
 
-## Before you start
+AI Pal supports three major LLM providers:
 
-Before you begin development, make sure that your project's JDK is set to version "21".
+- **OpenAI** - GPT-4o, GPT-4o Mini, and newer models
+- **Google Gemini** - Gemini Flash and Pro models
+- **Anthropic Claude** - Claude Opus, Sonnet, and Haiku models
 
+Switch between providers seamlessly in the Settings tab with model selection for each provider.
 
-## Writing your extension
+### Context Menu Actions
 
-To begin development, open the [Extension.java](src/main/java/Extension.java) file. It includes an example of setting your extension's name, which you can customize with your own logic.
+Right-click on any request/response in Burp to access AI-powered analysis:
 
-The template contains the following components for building your extension:
+| Action | Description |
+|--------|-------------|
+| **Analyze for Vulnerabilities** | Comprehensive security analysis covering OWASP Top 10, including SQLi, XSS, CSRF, SSRF, XXE, IDOR, and more |
+| **Explain Request/Response** | Plain-English breakdown of what the HTTP traffic does |
+| **Generate Attack Vectors** | Produces specific test payloads with bypass techniques |
+| **Custom Prompt** | Send your own prompt with the HTTP content as context |
+| **Chat** | Opens the request in the Chat tab for interactive analysis |
 
-* The `initialize` method. This is the entry point for your extension. It is called when the extension is loaded and receives a [montoyaApi](https://portswigger.github.io/burp-extensions-montoya-api/javadoc/burp/api/montoya/MontoyaApi.html) argument, which provides access to all Montoya API features.
-* The `Extension` class. This implements the BurpExtension interface, so your extension is recognized and loaded by Burp.
+### Interactive Chat
 
-#### Related resources
+A built-in chat interface for conversational security analysis:
 
-* For more information on Montoya API features, see the [JavaDoc](https://portswigger.github.io/burp-extensions-montoya-api/javadoc/burp/api/montoya/MontoyaApi.html).
-* To explore example extensions, visit our [GitHub repository](https://github.com/PortSwigger/burp-extensions-montoya-api-examples).
-* For more information on creating extensions, see our [documentation](https://portswigger.net/burp/documentation/desktop/extend-burp/extensions/creating).
-* For a beginner tutorial, see [Writing your first extension](https://portswigger.net/burp/documentation/desktop/extend-burp/extensions/creating/first-extension).
-* If you have any questions or need help from the community, join our [Discord channel](https://discord.com/channels/1159124119074381945/1164175825474686996).
+- Multi-turn conversations with conversation history
+- Send HTTP requests/responses directly to chat from context menu
+- Ask follow-up questions about vulnerabilities
+- Get help with payload crafting and testing strategies
 
-### Vibe Coding Your Extension with AI
+### Editor Integration
 
-You can use an LLM to help you write your extension. To support this, we've included a [`CLAUDE.md`](./CLAUDE.md) file and supporting [documentation](./docs) that provide essential context for the model.
+AI Pal adds an "AI Security Assistant" tab to the HTTP request and response editors in Repeater and other tools:
 
-#### Vibe Coding with Claude Code
+- Analyze requests directly from the editor
+- Track analysis tasks in the AI Tasks tab
+- Results appear inline without leaving your workflow
 
-To use this file with Claude Code:
+### AI Tasks Dashboard
 
-1. Open a terminal and navigate to the `ExtensionTemplateProject` folder.
-2. Run Claude Code using the following command: `claude`.
-3. Prompt Claude to create some code for your extension.
+Track all AI analysis operations in a dedicated tab:
 
-Claude should automatically read the contents of the `ExtensionTemplateProject` folder, including the `CLAUDE.md` file, then create draft code for you to review. If you think it hasn't read the `CLAUDE.md` file, directly prompt it to do so before continuing.
+- View status of running analyses
+- Review past analysis results
+- Manage concurrent AI operations
 
-#### Vibe Coding with Other LLMs
+## Installation
 
-If you're using an LLM other than Claude Code, prompt the LLM to read the `CLAUDE.md` file and supporting documentation from the `docs` folder, or provide their contents as part of your context window.
+### Prerequisites
 
----
+- Burp Suite Professional or Community Edition
+- Java 21 or higher
+- API key from at least one supported provider (OpenAI, Google, or Anthropic)
 
-## Building your extension
+### Building from Source
 
-When you're ready to test and use your extension, follow these steps to build a JAR file and load it into Burp.
+```bash
+# Clone the repository
+git clone https://github.com/yourusername/ai-pal.git
+cd ai-pal
 
-### Building the JAR file
+# Build the extension
+./gradlew jar
 
-To build the JAR file, run the following command in the root directory of this project:
+# The JAR file is created at build/libs/llm-security-assistant.jar
+```
 
-* For UNIX-based systems: `./gradlew jar`
-* For Windows systems: `gradlew jar`
+### Loading into Burp Suite
 
-If successful, the JAR file is saved to `<project_root_directory>/build/libs/<project_name>.jar`. If the build fails, errors are shown in the console. By default, the project name is `extension-template-project`. You can change this in the [settings.gradle.kts](./settings.gradle.kts) file.
+1. In Burp, go to **Extensions > Installed**
+2. Click **Add**
+3. Under **Extension details**, click **Select file**
+4. Select `build/libs/llm-security-assistant.jar`
+5. Click **Next**
 
+## Configuration
 
-## Loading the JAR file into Burp
+1. After loading the extension, open the **AI Pal** tab
+2. Navigate to the **Settings** sub-tab
+3. Select your preferred LLM provider
+4. Enter your API key for that provider
+5. Choose a model (each provider has multiple options)
+6. Click **Test Connection** to verify your setup
 
-To load the JAR file into Burp:
+### API Keys
 
-1. In Burp, go to **Extensions > Installed**.
-2. Click **Add**.
-3. Under **Extension details**, click **Select file**.
-4. Select the JAR file you just built, then click **Open**.
-5. [Optional] Under **Standard output** and **Standard error**, choose where to save output and error messages.
-6. Click **Next**. The extension is loaded into Burp.
-7. Review any messages displayed in the **Output** and **Errors** tabs.
-8. Click **Close**.
+- **OpenAI**: Get from [platform.openai.com](https://platform.openai.com/api-keys)
+- **Google Gemini**: Get from [Google AI Studio](https://aistudio.google.com/apikey)
+- **Anthropic Claude**: Get from [console.anthropic.com](https://console.anthropic.com/)
 
-Your extension is loaded and listed in the **Burp extensions** table. You can test its behavior and make changes to the code as necessary.
+## Usage
 
-### Reloading the JAR file in Burp
+### Quick Analysis
 
-If you make changes to the code, you must rebuild the JAR file and reload your extension in Burp for the changes to take effect.
+1. Capture traffic in Proxy or navigate to any request in Burp
+2. Right-click on the request/response
+3. Select **AI Pal > Analyze for Vulnerabilities**
+4. Review the analysis in the popup dialog
 
-To rebuild the JAR file, follow the steps for [building the JAR file](#building-the-jar-file).
+### Interactive Chat
 
-To quickly reload your extension in Burp:
+1. Right-click a request and select **AI Pal > Chat**
+2. The request is loaded into the Chat tab
+3. Ask questions like:
+   - "What parameters are most likely vulnerable?"
+   - "Generate XSS payloads for the search parameter"
+   - "Explain the authentication flow"
 
-1. In Burp, go to **Extensions > Installed**.
-2. Hold `Ctrl` or `⌘`, and select the **Loaded** checkbox next to your extension.
+### Editor Integration
 
----
+1. Open a request in Repeater
+2. Select the **AI Security Assistant** tab
+3. Use the analysis buttons to examine the request
+4. View your task in the **AI Tasks** sub-tab
 
-## Sharing your extension
+## Project Structure
 
-Once you've built your extension, we'd love to see what you've created!
+```
+src/main/java/
+├── Extension.java          # Main entry point
+├── config/                  # Settings and provider configuration
+│   ├── LLMProvider.java
+│   ├── LLMSettings.java
+│   └── SettingsManager.java
+├── llm/                     # LLM client implementations
+│   ├── LLMClient.java
+│   ├── LLMClientFactory.java
+│   ├── LLMResponse.java
+│   ├── impl/
+│   │   ├── ClaudeClient.java
+│   │   ├── GeminiClient.java
+│   │   └── OpenAIClient.java
+│   └── prompts/
+│       └── PromptTemplates.java
+├── ui/                      # User interface components
+│   ├── AIPalSuiteTab.java
+│   ├── chat/
+│   ├── contextmenu/
+│   ├── dialogs/
+│   ├── editor/
+│   ├── settings/
+│   └── tasks/
+└── util/                    # Utilities
+    ├── HttpRequestFormatter.java
+    ├── ThreadManager.java
+    └── Utf16Sanitizer.java
+```
 
-Share your extension on our [PortSwigger Discord](https://discord.com/channels/1159124119074381945/1164175825474686996) #extensions channel to get feedback, showcase your work, and connect with other developers.
-Then take it to the next level by submitting your extension to the BApp store, making it available to the community of 80,000+ users worldwide.
+## Development
 
-For guidance on the submission process, see [Submitting extensions to the BApp store](https://portswigger.net/burp/documentation/desktop/extend-burp/extensions/creating/bapp-store-submitting-extensions).
+### Build Commands
+
+```bash
+./gradlew build    # Build and run tests
+./gradlew jar      # Create the extension JAR
+./gradlew clean    # Clean build artifacts
+```
+
+### Quick Reload During Development
+
+1. Make code changes
+2. Run `./gradlew jar`
+3. In Burp: Hold **Ctrl/Cmd** and click the **Loaded** checkbox next to AI Pal
+
+### Adding a New LLM Provider
+
+1. Add the provider to `config/LLMProvider.java`
+2. Add models to `config/LLMSettings.java`
+3. Create a new client in `llm/impl/`
+4. Register in `LLMClientFactory.java`
+
+## Security Considerations
+
+- API keys are stored in Burp's preferences (encrypted by Burp)
+- All LLM requests go through Burp's HTTP stack, respecting proxy settings
+- HTTP content sent to LLMs may contain sensitive data - review before sending
+
+## Requirements
+
+- Burp Suite 2024.1+ (uses Montoya API 2025.10)
+- Java 21
+- Internet access to LLM provider APIs
+
+## License
+
+MIT License
+
+## Acknowledgments
+
+- Built using the [Burp Montoya API](https://portswigger.github.io/burp-extensions-montoya-api/javadoc/burp/api/montoya/MontoyaApi.html)
+- Inspired by the PortSwigger extension template

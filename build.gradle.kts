@@ -8,6 +8,7 @@ repositories {
 
 dependencies {
     compileOnly("net.portswigger.burp.extensions:montoya-api:2025.10")
+    implementation("com.google.code.gson:gson:2.10.1")
 }
 
 tasks.withType<JavaCompile> {
