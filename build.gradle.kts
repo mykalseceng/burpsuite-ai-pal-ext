@@ -7,7 +7,7 @@ repositories {
 }
 
 dependencies {
-    compileOnly("net.portswigger.burp.extensions:montoya-api:2025.10")
+    compileOnly("net.portswigger.burp.extensions:montoya-api:2025.12")
     implementation("com.google.code.gson:gson:2.10.1")
 }
 
