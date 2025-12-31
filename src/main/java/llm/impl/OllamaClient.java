@@ -110,11 +110,13 @@ public class OllamaClient implements LLMClient {
                 messagesArray.add(msgObj);
             }
 
-            // Add new user message
-            JsonObject userMsg = new JsonObject();
-            userMsg.addProperty("role", "user");
-            userMsg.addProperty("content", Utf16Sanitizer.sanitize(newMessage));
-            messagesArray.add(userMsg);
+            // Add new user message only if not empty
+            if (newMessage != null && !newMessage.isEmpty()) {
+                JsonObject userMsg = new JsonObject();
+                userMsg.addProperty("role", "user");
+                userMsg.addProperty("content", Utf16Sanitizer.sanitize(newMessage));
+                messagesArray.add(userMsg);
+            }
 
             requestBody.add("messages", messagesArray);
 
@@ -244,7 +246,7 @@ public class OllamaClient implements LLMClient {
             conn.setRequestProperty("Content-Type", "application/json");
             conn.setDoOutput(true);
             conn.setConnectTimeout(30000);
-            conn.setReadTimeout(300000); // 5 minute read timeout for long responses
+            conn.setReadTimeout(5000); // Short read timeout to allow cancel checks
 
             String body = Utf16Sanitizer.sanitize(requestBody.toString());
             try (OutputStream os = conn.getOutputStream()) {
@@ -260,16 +262,27 @@ public class OllamaClient implements LLMClient {
             StringBuilder thinkingContent = new StringBuilder();
             int totalTokens = 0;
             boolean isFirstChunk = true;
+            final HttpURLConnection connection = conn; // final reference for cleanup
 
             try (BufferedReader reader = new BufferedReader(
                     new InputStreamReader(conn.getInputStream(), StandardCharsets.UTF_8))) {
                 String line;
-                while ((line = reader.readLine()) != null) {
-                    // Check if cancelled
+                boolean done = false;
+                while (!done) {
+                    // Check if cancelled - disconnect to unblock readLine
                     if (callback.isCancelled()) {
+                        connection.disconnect();
                         break;
                     }
 
+                    try {
+                        line = reader.readLine();
+                    } catch (java.net.SocketTimeoutException e) {
+                        // Timeout allows us to check cancel flag; continue if not cancelled
+                        continue;
+                    }
+
+                    if (line == null) break;
                     if (line.trim().isEmpty()) continue;
 
                     try {
@@ -322,11 +335,17 @@ public class OllamaClient implements LLMClient {
                 }
             }
 
-            callback.onComplete(totalTokens);
+            // Only report completion if not cancelled
+            if (!callback.isCancelled()) {
+                callback.onComplete(totalTokens);
+            }
 
         } catch (Exception e) {
-            logging.logToError("Ollama streaming error: " + e.getMessage());
-            callback.onError("Ollama streaming error: " + e.getMessage());
+            // Don't report error if cancelled (disconnect causes exception)
+            if (!callback.isCancelled()) {
+                logging.logToError("Ollama streaming error: " + e.getMessage());
+                callback.onError("Ollama streaming error: " + e.getMessage());
+            }
         }
     }
 

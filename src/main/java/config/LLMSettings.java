@@ -144,7 +144,7 @@ public class LLMSettings {
     }
 
     private boolean hasBedrockCredentials() {
-        // Check for explicit credentials
+        // Check for explicit credentials in settings
         boolean hasExplicit = bedrockAccessKey != null && !bedrockAccessKey.trim().isEmpty()
                 && bedrockSecretKey != null && !bedrockSecretKey.trim().isEmpty();
 
@@ -152,10 +152,17 @@ public class LLMSettings {
         boolean hasEnv = System.getenv("AWS_ACCESS_KEY_ID") != null
                 && System.getenv("AWS_SECRET_ACCESS_KEY") != null;
 
-        // Check for default credentials file (we assume it might exist)
-        boolean hasProfile = System.getenv("AWS_PROFILE") != null
-                || System.getProperty("user.home") != null;
+        // Check for AWS credentials file (must actually exist)
+        boolean hasCredentialsFile = false;
+        String home = System.getProperty("user.home");
+        if (home != null) {
+            java.io.File credFile = new java.io.File(home, ".aws/credentials");
+            hasCredentialsFile = credFile.exists() && credFile.canRead();
+        }
 
-        return hasExplicit || hasEnv || hasProfile;
+        // Check for AWS_PROFILE with credentials file
+        boolean hasProfile = System.getenv("AWS_PROFILE") != null && hasCredentialsFile;
+
+        return hasExplicit || hasEnv || hasCredentialsFile || hasProfile;
     }
 }

@@ -81,6 +81,10 @@ public class LLMSettingsPanel extends JPanel {
             protected Boolean doInBackground() {
                 try {
                     String baseUrl = settingsManager.getOllamaBaseUrl();
+                    // Normalize URL - add http:// if no scheme present
+                    if (!baseUrl.startsWith("http://") && !baseUrl.startsWith("https://")) {
+                        baseUrl = "http://" + baseUrl;
+                    }
                     java.net.http.HttpClient client = java.net.http.HttpClient.newBuilder()
                             .connectTimeout(java.time.Duration.ofSeconds(3))
                             .build();
@@ -540,7 +544,7 @@ public class LLMSettingsPanel extends JPanel {
                 TitledBorder.TOP
         ));
         panel.setAlignmentX(Component.LEFT_ALIGNMENT);
-        panel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 290));
+        panel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 320));
 
         // Radio button row
         JPanel radioRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 5));
@@ -608,6 +612,15 @@ public class LLMSettingsPanel extends JPanel {
         sessionTokenRow.add(new JLabel("(optional)"));
         sessionTokenRow.setAlignmentX(Component.LEFT_ALIGNMENT);
         panel.add(sessionTokenRow);
+
+        // Security warning row
+        JPanel warningRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 2));
+        JLabel warningLabel = new JLabel("Note: Credentials stored in Burp preferences. Use env vars or ~/.aws/credentials for better security.");
+        warningLabel.setFont(warningLabel.getFont().deriveFont(Font.ITALIC, 10f));
+        warningLabel.setForeground(new Color(150, 100, 0)); // Dark orange/warning color
+        warningRow.add(warningLabel);
+        warningRow.setAlignmentX(Component.LEFT_ALIGNMENT);
+        panel.add(warningRow);
 
         // Model selection row
         JPanel modelRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 5));

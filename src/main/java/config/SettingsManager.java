@@ -71,6 +71,8 @@ public class SettingsManager {
         preferences.setString(KEY_OLLAMA_MODEL, settings.getOllamaModel());
 
         // Save Bedrock settings
+        // WARNING: AWS credentials are stored as plain text in Burp preferences.
+        // For production use, consider using environment variables or AWS credentials file instead.
         preferences.setString(KEY_BEDROCK_ACCESS_KEY, settings.getBedrockAccessKey());
         preferences.setString(KEY_BEDROCK_SECRET_KEY, settings.getBedrockSecretKey());
         preferences.setString(KEY_BEDROCK_SESSION_TOKEN, settings.getBedrockSessionToken());

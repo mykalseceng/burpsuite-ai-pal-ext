@@ -115,11 +115,13 @@ public class BedrockClient implements LLMClient {
             }
         }
 
-        // Add current message
-        JsonObject userMsg = new JsonObject();
-        userMsg.addProperty("role", "user");
-        userMsg.addProperty("content", Utf16Sanitizer.sanitize(prompt));
-        messages.add(userMsg);
+        // Add current message only if not empty
+        if (prompt != null && !prompt.isEmpty()) {
+            JsonObject userMsg = new JsonObject();
+            userMsg.addProperty("role", "user");
+            userMsg.addProperty("content", Utf16Sanitizer.sanitize(prompt));
+            messages.add(userMsg);
+        }
 
         requestBody.add("messages", messages);
         return requestBody;
