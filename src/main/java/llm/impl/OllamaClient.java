@@ -246,7 +246,7 @@ public class OllamaClient implements LLMClient {
             conn.setRequestProperty("Content-Type", "application/json");
             conn.setDoOutput(true);
             conn.setConnectTimeout(30000);
-            conn.setReadTimeout(5000); // Short read timeout to allow cancel checks
+            conn.setReadTimeout(2000); // Short read timeout (2s) for responsive cancel
 
             String body = Utf16Sanitizer.sanitize(requestBody.toString());
             try (OutputStream os = conn.getOutputStream()) {

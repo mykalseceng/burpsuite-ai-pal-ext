@@ -650,7 +650,7 @@ public class LLMSettingsPanel extends JPanel {
         if (!clientFactory.hasValidConfig(provider)) {
             String message = switch (provider) {
                 case OLLAMA -> "Please enter a valid Ollama base URL.";
-                case BEDROCK -> "Please configure AWS credentials (in settings or environment variables).";
+                case BEDROCK -> "Please configure AWS credentials (settings, environment variables, or ~/.aws/credentials via AWS_DEFAULT_PROFILE or default).";
             };
             JOptionPane.showMessageDialog(this,
                     message,

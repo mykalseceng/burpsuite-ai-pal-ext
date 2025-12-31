@@ -47,19 +47,107 @@ public class BedrockClient implements LLMClient {
         this.region = region;
         this.model = model;
 
-        // Use provided credentials or fall back to environment variables
-        this.accessKey = (accessKey != null && !accessKey.isEmpty())
-                ? accessKey
-                : System.getenv("AWS_ACCESS_KEY_ID");
-        this.secretKey = (secretKey != null && !secretKey.isEmpty())
-                ? secretKey
-                : System.getenv("AWS_SECRET_ACCESS_KEY");
+        // Credential resolution order:
+        // 1. Explicit credentials from settings
+        // 2. Environment variables
+        // 3. Shared credentials file (~/.aws/credentials, AWS_DEFAULT_PROFILE)
+        String[] resolvedCreds = resolveCredentials(accessKey, secretKey, sessionToken);
+        this.accessKey = resolvedCreds[0];
+        this.secretKey = resolvedCreds[1];
+        this.sessionToken = resolvedCreds[2];
+    }
 
-        // Session token is optional - used for temporary credentials
-        String envSessionToken = System.getenv("AWS_SESSION_TOKEN");
-        this.sessionToken = (sessionToken != null && !sessionToken.isEmpty())
-                ? sessionToken
-                : envSessionToken;
+    private String[] resolveCredentials(String explicitAccess, String explicitSecret, String explicitSession) {
+        // 1. Use explicit credentials if provided
+        if (!isBlank(explicitAccess) && !isBlank(explicitSecret)) {
+            return new String[]{explicitAccess.trim(), explicitSecret.trim(), normalize(explicitSession)};
+        }
+
+        // 2. Try environment variables
+        String envAccess = System.getenv("AWS_ACCESS_KEY_ID");
+        String envSecret = System.getenv("AWS_SECRET_ACCESS_KEY");
+        String envSession = System.getenv("AWS_SESSION_TOKEN");
+        if (!isBlank(envAccess) && !isBlank(envSecret)) {
+            return new String[]{envAccess.trim(), envSecret.trim(), normalize(envSession)};
+        }
+
+        // 3. Try AWS credentials file
+        String[] fileCreds = loadCredentialsFromFile();
+        if (fileCreds != null) {
+            return fileCreds;
+        }
+
+        // No credentials found
+        return new String[]{null, null, null};
+    }
+
+    private String[] loadCredentialsFromFile() {
+        String home = System.getProperty("user.home");
+        if (home == null) return null;
+
+        java.io.File credFile = new java.io.File(home, ".aws/credentials");
+        if (!credFile.exists() || !credFile.canRead()) return null;
+
+        String profile = System.getenv("AWS_DEFAULT_PROFILE");
+        if (profile == null || profile.isBlank()) {
+            profile = "default";
+        } else {
+            profile = profile.trim();
+        }
+
+        try (java.io.BufferedReader reader = new java.io.BufferedReader(new java.io.FileReader(credFile))) {
+            String line;
+            boolean inProfile = false;
+            String accessKey = null;
+            String secretKey = null;
+            String sessionToken = null;
+
+            while ((line = reader.readLine()) != null) {
+                String trimmed = line.trim();
+
+                // Check for profile header
+                if (trimmed.isEmpty() || trimmed.startsWith("#") || trimmed.startsWith(";")) {
+                    continue;
+                }
+                if (trimmed.startsWith("[") && trimmed.endsWith("]")) {
+                    String currentProfile = trimmed.substring(1, trimmed.length() - 1).trim();
+                    inProfile = currentProfile.equals(profile);
+                    continue;
+                }
+
+                if (inProfile && trimmed.contains("=")) {
+                    String[] parts = trimmed.split("=", 2);
+                    String key = parts[0].trim();
+                    String value = parts[1].trim();
+
+                    switch (key) {
+                        case "aws_access_key_id" -> accessKey = value;
+                        case "aws_secret_access_key" -> secretKey = value;
+                        case "aws_session_token" -> sessionToken = value;
+                    }
+                }
+            }
+
+            if (!isBlank(accessKey) && !isBlank(secretKey)) {
+                return new String[]{accessKey.trim(), secretKey.trim(), normalize(sessionToken)};
+            }
+        } catch (Exception e) {
+            logging.logToError("Failed to read AWS credentials file: " + e.getMessage());
+        }
+
+        return null;
+    }
+
+    private static boolean isBlank(String value) {
+        return value == null || value.trim().isEmpty();
+    }
+
+    private static String normalize(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
     }
 
     @Override
@@ -129,7 +217,7 @@ public class BedrockClient implements LLMClient {
 
     private LLMResponse invokeModel(JsonObject requestBody) {
         if (accessKey == null || secretKey == null) {
-            return LLMResponse.error("AWS credentials not configured. Set AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY environment variables, or configure in settings.");
+            return LLMResponse.error("AWS credentials not configured. Set AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY environment variables, configure in settings, or add a profile to ~/.aws/credentials (AWS_DEFAULT_PROFILE or default).");
         }
 
         String host = "bedrock-runtime." + region + ".amazonaws.com";
