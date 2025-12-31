@@ -23,10 +23,12 @@ public class ChatPanel extends JPanel implements ConversationHistory.Conversatio
     private final JTextPane chatDisplay;
     private final JTextArea inputArea;
     private final JButton sendButton;
+    private final JButton stopButton;
     private final JLabel statusLabel;
 
     private String attachedRequest = null;
     private boolean isProcessing = false;
+    private volatile boolean stopRequested = false;
 
     // Style constants
     private static final Color USER_COLOR = new Color(0, 102, 204);
@@ -73,16 +75,21 @@ public class ChatPanel extends JPanel implements ConversationHistory.Conversatio
         JScrollPane inputScroll = new JScrollPane(inputArea);
         inputPanel.add(inputScroll, BorderLayout.CENTER);
 
-        // Button panel
-        JPanel buttonPanel = new JPanel(new BorderLayout(5, 5));
+        // Button panel - use GridLayout for vertical stacking
+        JPanel buttonPanel = new JPanel(new GridLayout(3, 1, 5, 5));
 
         sendButton = new JButton("Send");
         sendButton.addActionListener(e -> sendMessage());
-        buttonPanel.add(sendButton, BorderLayout.NORTH);
+        buttonPanel.add(sendButton);
+
+        stopButton = new JButton("Stop");
+        stopButton.setEnabled(false);
+        stopButton.addActionListener(e -> stopStreaming());
+        buttonPanel.add(stopButton);
 
         JButton clearButton = new JButton("Clear");
         clearButton.addActionListener(e -> clearChat());
-        buttonPanel.add(clearButton, BorderLayout.SOUTH);
+        buttonPanel.add(clearButton);
 
         inputPanel.add(buttonPanel, BorderLayout.EAST);
 
@@ -115,16 +122,18 @@ public class ChatPanel extends JPanel implements ConversationHistory.Conversatio
         String userMessage = inputArea.getText().trim();
         if (userMessage.isEmpty()) return;
 
-        if (!clientFactory.hasValidApiKey()) {
+        if (!clientFactory.hasValidConfig()) {
             JOptionPane.showMessageDialog(this,
-                    "Please configure an API key in the extension settings first.",
-                    "API Key Required",
+                    "Please configure the LLM provider in the extension settings first.",
+                    "Configuration Required",
                     JOptionPane.WARNING_MESSAGE);
             return;
         }
 
         isProcessing = true;
+        stopRequested = false;
         sendButton.setEnabled(false);
+        stopButton.setEnabled(true);
         statusLabel.setText("Sending to " + settingsManager.getActiveProvider().getDisplayName() + "...");
 
         // Add user message to history
@@ -140,26 +149,121 @@ public class ChatPanel extends JPanel implements ConversationHistory.Conversatio
         // Send to LLM
         threadManager.submitAsync(() -> {
             LLMClient client = clientFactory.createClient();
-            LLMResponse response = client.chat(history.getMessages(), "");
 
-            SwingUtilities.invokeLater(() -> {
-                isProcessing = false;
-                sendButton.setEnabled(true);
+            if (client.supportsStreaming()) {
+                // Use streaming for real-time response
+                final StringBuilder responseBuilder = new StringBuilder();
 
-                if (response.isSuccess()) {
-                    history.addAssistantMessage(response.getContent());
-                    statusLabel.setText("Ready (Tokens used: " + response.getTokensUsed() + ")");
-                } else {
-                    appendMessage("Error", response.getErrorMessage(), Color.RED);
-                    statusLabel.setText("Error occurred");
-                }
-            });
+                // Add assistant label before streaming starts
+                SwingUtilities.invokeLater(() -> {
+                    String label = settingsManager.getActiveProvider().getDisplayName();
+                    StyledDocument doc = chatDisplay.getStyledDocument();
+                    try {
+                        SimpleAttributeSet labelStyle = new SimpleAttributeSet();
+                        StyleConstants.setBold(labelStyle, true);
+                        StyleConstants.setForeground(labelStyle, ASSISTANT_COLOR);
+                        doc.insertString(doc.getLength(), label + ": ", labelStyle);
+                    } catch (BadLocationException e) {
+                        // Ignore
+                    }
+                    statusLabel.setText("Streaming response...");
+                });
+
+                client.chatStreaming(history.getMessages(), "", new LLMClient.StreamCallback() {
+                    @Override
+                    public boolean isCancelled() {
+                        return stopRequested;
+                    }
+
+                    @Override
+                    public void onChunk(String chunk) {
+                        if (stopRequested) {
+                            return; // Skip processing if stop was requested
+                        }
+                        responseBuilder.append(chunk);
+                        SwingUtilities.invokeLater(() -> {
+                            StyledDocument doc = chatDisplay.getStyledDocument();
+                            try {
+                                SimpleAttributeSet msgStyle = new SimpleAttributeSet();
+                                StyleConstants.setForeground(msgStyle, Color.BLACK);
+                                doc.insertString(doc.getLength(), chunk, msgStyle);
+                                chatDisplay.setCaretPosition(doc.getLength());
+                            } catch (BadLocationException e) {
+                                // Ignore
+                            }
+                        });
+                    }
+
+                    @Override
+                    public void onComplete(int totalTokens) {
+                        SwingUtilities.invokeLater(() -> {
+                            // Add newlines at the end
+                            StyledDocument doc = chatDisplay.getStyledDocument();
+                            try {
+                                doc.insertString(doc.getLength(), "\n\n", null);
+                            } catch (BadLocationException e) {
+                                // Ignore
+                            }
+
+                            // Add to history (without triggering onMessageAdded display)
+                            String fullResponse = responseBuilder.toString();
+                            if (!fullResponse.isEmpty()) {
+                                history.addAssistantMessageSilent(fullResponse);
+                            }
+
+                            isProcessing = false;
+                            sendButton.setEnabled(true);
+                            stopButton.setEnabled(false);
+                            if (stopRequested) {
+                                statusLabel.setText("Stopped");
+                            } else {
+                                statusLabel.setText("Ready (Tokens used: " + totalTokens + ")");
+                            }
+                        });
+                    }
+
+                    @Override
+                    public void onError(String error) {
+                        SwingUtilities.invokeLater(() -> {
+                            appendMessage("Error", error, Color.RED);
+                            isProcessing = false;
+                            sendButton.setEnabled(true);
+                            stopButton.setEnabled(false);
+                            statusLabel.setText("Error occurred");
+                        });
+                    }
+                });
+            } else {
+                // Fallback to non-streaming
+                LLMResponse response = client.chat(history.getMessages(), "");
+
+                SwingUtilities.invokeLater(() -> {
+                    isProcessing = false;
+                    sendButton.setEnabled(true);
+                    stopButton.setEnabled(false);
+
+                    if (response.isSuccess()) {
+                        history.addAssistantMessage(response.getContent());
+                        statusLabel.setText("Ready (Tokens used: " + response.getTokensUsed() + ")");
+                    } else {
+                        appendMessage("Error", response.getErrorMessage(), Color.RED);
+                        statusLabel.setText("Error occurred");
+                    }
+                });
+            }
         }, error -> SwingUtilities.invokeLater(() -> {
             isProcessing = false;
             sendButton.setEnabled(true);
+            stopButton.setEnabled(false);
             appendMessage("Error", error.getMessage(), Color.RED);
             statusLabel.setText("Error occurred");
         }));
+    }
+
+    private void stopStreaming() {
+        stopRequested = true;
+        stopButton.setEnabled(false);
+        statusLabel.setText("Stopping...");
     }
 
     private void clearChat() {

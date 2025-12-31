@@ -115,10 +115,10 @@ public class LLMSecurityAssistantEditorPanel extends JPanel {
             return;
         }
 
-        if (!clientFactory.hasValidApiKey()) {
+        if (!clientFactory.hasValidConfig()) {
             JOptionPane.showMessageDialog(this,
-                    "Please configure an API key in the extension settings first.",
-                    "API Key Required",
+                    "Please configure the LLM provider in the extension settings first.",
+                    "Configuration Required",
                     JOptionPane.WARNING_MESSAGE);
             return;
         }

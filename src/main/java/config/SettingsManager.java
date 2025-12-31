@@ -4,12 +4,17 @@ import burp.api.montoya.persistence.Preferences;
 
 public class SettingsManager {
     private static final String KEY_ACTIVE_PROVIDER = "llm.activeProvider";
-    private static final String KEY_OPENAI_API_KEY = "llm.openai.apiKey";
-    private static final String KEY_OPENAI_MODEL = "llm.openai.model";
-    private static final String KEY_GEMINI_API_KEY = "llm.gemini.apiKey";
-    private static final String KEY_GEMINI_MODEL = "llm.gemini.model";
-    private static final String KEY_CLAUDE_API_KEY = "llm.claude.apiKey";
-    private static final String KEY_CLAUDE_MODEL = "llm.claude.model";
+
+    // Ollama settings keys
+    private static final String KEY_OLLAMA_BASE_URL = "llm.ollama.baseUrl";
+    private static final String KEY_OLLAMA_MODEL = "llm.ollama.model";
+
+    // Bedrock settings keys
+    private static final String KEY_BEDROCK_ACCESS_KEY = "llm.bedrock.accessKey";
+    private static final String KEY_BEDROCK_SECRET_KEY = "llm.bedrock.secretKey";
+    private static final String KEY_BEDROCK_SESSION_TOKEN = "llm.bedrock.sessionToken";
+    private static final String KEY_BEDROCK_REGION = "llm.bedrock.region";
+    private static final String KEY_BEDROCK_MODEL = "llm.bedrock.model";
 
     private final Preferences preferences;
     private LLMSettings settings;
@@ -27,38 +32,50 @@ public class SettingsManager {
             try {
                 s.setActiveProvider(LLMProvider.valueOf(providerName));
             } catch (IllegalArgumentException ignored) {
+                // Default to OLLAMA if invalid
+                s.setActiveProvider(LLMProvider.OLLAMA);
             }
         }
 
-        String openaiKey = preferences.getString(KEY_OPENAI_API_KEY);
-        if (openaiKey != null) s.setOpenaiApiKey(openaiKey);
+        // Load Ollama settings
+        String ollamaBaseUrl = preferences.getString(KEY_OLLAMA_BASE_URL);
+        if (ollamaBaseUrl != null) s.setOllamaBaseUrl(ollamaBaseUrl);
 
-        String openaiModel = preferences.getString(KEY_OPENAI_MODEL);
-        if (openaiModel != null) s.setOpenaiModel(openaiModel);
+        String ollamaModel = preferences.getString(KEY_OLLAMA_MODEL);
+        if (ollamaModel != null) s.setOllamaModel(ollamaModel);
 
-        String geminiKey = preferences.getString(KEY_GEMINI_API_KEY);
-        if (geminiKey != null) s.setGeminiApiKey(geminiKey);
+        // Load Bedrock settings
+        String bedrockAccessKey = preferences.getString(KEY_BEDROCK_ACCESS_KEY);
+        if (bedrockAccessKey != null) s.setBedrockAccessKey(bedrockAccessKey);
 
-        String geminiModel = preferences.getString(KEY_GEMINI_MODEL);
-        if (geminiModel != null) s.setGeminiModel(geminiModel);
+        String bedrockSecretKey = preferences.getString(KEY_BEDROCK_SECRET_KEY);
+        if (bedrockSecretKey != null) s.setBedrockSecretKey(bedrockSecretKey);
 
-        String claudeKey = preferences.getString(KEY_CLAUDE_API_KEY);
-        if (claudeKey != null) s.setClaudeApiKey(claudeKey);
+        String bedrockSessionToken = preferences.getString(KEY_BEDROCK_SESSION_TOKEN);
+        if (bedrockSessionToken != null) s.setBedrockSessionToken(bedrockSessionToken);
 
-        String claudeModel = preferences.getString(KEY_CLAUDE_MODEL);
-        if (claudeModel != null) s.setClaudeModel(claudeModel);
+        String bedrockRegion = preferences.getString(KEY_BEDROCK_REGION);
+        if (bedrockRegion != null) s.setBedrockRegion(bedrockRegion);
+
+        String bedrockModel = preferences.getString(KEY_BEDROCK_MODEL);
+        if (bedrockModel != null) s.setBedrockModel(bedrockModel);
 
         return s;
     }
 
     public void saveSettings() {
         preferences.setString(KEY_ACTIVE_PROVIDER, settings.getActiveProvider().name());
-        preferences.setString(KEY_OPENAI_API_KEY, settings.getOpenaiApiKey());
-        preferences.setString(KEY_OPENAI_MODEL, settings.getOpenaiModel());
-        preferences.setString(KEY_GEMINI_API_KEY, settings.getGeminiApiKey());
-        preferences.setString(KEY_GEMINI_MODEL, settings.getGeminiModel());
-        preferences.setString(KEY_CLAUDE_API_KEY, settings.getClaudeApiKey());
-        preferences.setString(KEY_CLAUDE_MODEL, settings.getClaudeModel());
+
+        // Save Ollama settings
+        preferences.setString(KEY_OLLAMA_BASE_URL, settings.getOllamaBaseUrl());
+        preferences.setString(KEY_OLLAMA_MODEL, settings.getOllamaModel());
+
+        // Save Bedrock settings
+        preferences.setString(KEY_BEDROCK_ACCESS_KEY, settings.getBedrockAccessKey());
+        preferences.setString(KEY_BEDROCK_SECRET_KEY, settings.getBedrockSecretKey());
+        preferences.setString(KEY_BEDROCK_SESSION_TOKEN, settings.getBedrockSessionToken());
+        preferences.setString(KEY_BEDROCK_REGION, settings.getBedrockRegion());
+        preferences.setString(KEY_BEDROCK_MODEL, settings.getBedrockModel());
     }
 
     public LLMSettings getSettings() {
@@ -74,15 +91,6 @@ public class SettingsManager {
         saveSettings();
     }
 
-    public String getApiKey(LLMProvider provider) {
-        return settings.getApiKey(provider);
-    }
-
-    public void setApiKey(LLMProvider provider, String apiKey) {
-        settings.setApiKey(provider, apiKey);
-        saveSettings();
-    }
-
     public String getModel(LLMProvider provider) {
         return settings.getModel(provider);
     }
@@ -92,11 +100,65 @@ public class SettingsManager {
         saveSettings();
     }
 
-    public String getCurrentApiKey() {
-        return getApiKey(getActiveProvider());
-    }
-
     public String getCurrentModel() {
         return getModel(getActiveProvider());
+    }
+
+    // Ollama-specific accessors
+    public String getOllamaBaseUrl() {
+        return settings.getOllamaBaseUrl();
+    }
+
+    public void setOllamaBaseUrl(String baseUrl) {
+        settings.setOllamaBaseUrl(baseUrl);
+        saveSettings();
+    }
+
+    // Bedrock-specific accessors
+    public String getBedrockAccessKey() {
+        return settings.getBedrockAccessKey();
+    }
+
+    public void setBedrockAccessKey(String accessKey) {
+        settings.setBedrockAccessKey(accessKey);
+        saveSettings();
+    }
+
+    public String getBedrockSecretKey() {
+        return settings.getBedrockSecretKey();
+    }
+
+    public void setBedrockSecretKey(String secretKey) {
+        settings.setBedrockSecretKey(secretKey);
+        saveSettings();
+    }
+
+    public String getBedrockSessionToken() {
+        return settings.getBedrockSessionToken();
+    }
+
+    public void setBedrockSessionToken(String sessionToken) {
+        settings.setBedrockSessionToken(sessionToken);
+        saveSettings();
+    }
+
+    public String getBedrockRegion() {
+        return settings.getBedrockRegion();
+    }
+
+    public void setBedrockRegion(String region) {
+        settings.setBedrockRegion(region);
+        saveSettings();
+    }
+
+    /**
+     * Check if the provider has valid configuration.
+     */
+    public boolean hasValidConfig() {
+        return settings.hasValidConfig(getActiveProvider());
+    }
+
+    public boolean hasValidConfig(LLMProvider provider) {
+        return settings.hasValidConfig(provider);
     }
 }

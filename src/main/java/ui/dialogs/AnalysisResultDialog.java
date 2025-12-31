@@ -1,34 +1,46 @@
 package ui.dialogs;
 
 import javax.swing.*;
+import javax.swing.border.EmptyBorder;
 import java.awt.*;
 import java.awt.datatransfer.StringSelection;
 
 public class AnalysisResultDialog extends JDialog {
     private final JTextArea resultArea;
 
+    // Consistent styling like Atlas-AI
+    private static final Font RESULT_FONT = new Font(Font.MONOSPACED, Font.BOLD, 14);
+    private static final Color BACKGROUND_COLOR = new Color(250, 250, 250);
+
     public AnalysisResultDialog(Frame parent, String title, String result) {
         super(parent, title, false); // Non-modal so user can interact with Burp
 
-        setSize(800, 600);
+        setSize(900, 700);
         setLocationRelativeTo(parent);
         setLayout(new BorderLayout());
 
-        // Result text area
+        // Result text area with improved styling
         resultArea = new JTextArea(result);
         resultArea.setEditable(false);
         resultArea.setLineWrap(true);
         resultArea.setWrapStyleWord(true);
-        resultArea.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 12));
-        resultArea.setMargin(new Insets(10, 10, 10, 10));
+        resultArea.setFont(RESULT_FONT);
+        resultArea.setBackground(BACKGROUND_COLOR);
+        resultArea.setMargin(new Insets(15, 15, 15, 15));
 
         JScrollPane scrollPane = new JScrollPane(resultArea);
+        scrollPane.setBorder(BorderFactory.createCompoundBorder(
+                new EmptyBorder(10, 10, 5, 10),
+                BorderFactory.createLineBorder(new Color(200, 200, 200))
+        ));
         add(scrollPane, BorderLayout.CENTER);
 
-        // Button panel
-        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        // Button panel with better styling
+        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 10));
+        buttonPanel.setBorder(new EmptyBorder(5, 10, 10, 10));
 
         JButton copyButton = new JButton("Copy to Clipboard");
+        copyButton.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 13));
         copyButton.addActionListener(e -> {
             StringSelection selection = new StringSelection(resultArea.getText());
             Toolkit.getDefaultToolkit().getSystemClipboard().setContents(selection, null);
@@ -37,6 +49,7 @@ public class AnalysisResultDialog extends JDialog {
         buttonPanel.add(copyButton);
 
         JButton closeButton = new JButton("Close");
+        closeButton.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 13));
         closeButton.addActionListener(e -> dispose());
         buttonPanel.add(closeButton);
 

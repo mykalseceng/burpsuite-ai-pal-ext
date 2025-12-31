@@ -17,6 +17,8 @@ import util.ThreadManager;
 
 import javax.swing.*;
 import java.awt.*;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -53,7 +55,7 @@ public class LLMContextMenuProvider implements ContextMenuItemsProvider {
         JMenuItem chatItem = new JMenuItem("Chat");
         chatItem.addActionListener(e -> chatController.sendToChat(selectedItems.get(0)));
 
-        JMenuItem customItem = new JMenuItem("Custom Prompt...");
+        JMenuItem customItem = new JMenuItem("Custom Prompt");
         customItem.addActionListener(e -> customPrompt(selectedItems));
 
         JMenuItem explainItem = new JMenuItem("Explain Request/Response");
@@ -74,7 +76,7 @@ public class LLMContextMenuProvider implements ContextMenuItemsProvider {
     }
 
     private void analyzeForVulnerabilities(List<HttpRequestResponse> items) {
-        if (!checkApiKey()) return;
+        if (!checkConfig()) return;
 
         Frame parentFrame = api.userInterface().swingUtils().suiteFrame();
         String httpContent = formatItems(items);
@@ -89,7 +91,7 @@ public class LLMContextMenuProvider implements ContextMenuItemsProvider {
 
             SwingUtilities.invokeLater(() -> {
                 if (response.isSuccess()) {
-                    dialog.setResult(response.getContent());
+                    dialog.setResult(formatResultWithHeader("Vulnerability Analysis", items, response.getContent()));
                 } else {
                     dialog.setResult("Error: " + response.getErrorMessage());
                 }
@@ -100,7 +102,7 @@ public class LLMContextMenuProvider implements ContextMenuItemsProvider {
     }
 
     private void explainRequest(List<HttpRequestResponse> items) {
-        if (!checkApiKey()) return;
+        if (!checkConfig()) return;
 
         Frame parentFrame = api.userInterface().swingUtils().suiteFrame();
         String httpContent = formatItems(items);
@@ -115,7 +117,7 @@ public class LLMContextMenuProvider implements ContextMenuItemsProvider {
 
             SwingUtilities.invokeLater(() -> {
                 if (response.isSuccess()) {
-                    dialog.setResult(response.getContent());
+                    dialog.setResult(formatResultWithHeader("Request Explanation", items, response.getContent()));
                 } else {
                     dialog.setResult("Error: " + response.getErrorMessage());
                 }
@@ -126,7 +128,7 @@ public class LLMContextMenuProvider implements ContextMenuItemsProvider {
     }
 
     private void generateAttackVectors(List<HttpRequestResponse> items) {
-        if (!checkApiKey()) return;
+        if (!checkConfig()) return;
 
         Frame parentFrame = api.userInterface().swingUtils().suiteFrame();
         String httpContent = formatItems(items);
@@ -141,7 +143,7 @@ public class LLMContextMenuProvider implements ContextMenuItemsProvider {
 
             SwingUtilities.invokeLater(() -> {
                 if (response.isSuccess()) {
-                    dialog.setResult(response.getContent());
+                    dialog.setResult(formatResultWithHeader("Attack Vectors", items, response.getContent()));
                 } else {
                     dialog.setResult("Error: " + response.getErrorMessage());
                 }
@@ -152,7 +154,7 @@ public class LLMContextMenuProvider implements ContextMenuItemsProvider {
     }
 
     private void customPrompt(List<HttpRequestResponse> items) {
-        if (!checkApiKey()) return;
+        if (!checkConfig()) return;
 
         Frame parentFrame = api.userInterface().swingUtils().suiteFrame();
         String httpContent = formatItems(items);
@@ -170,7 +172,7 @@ public class LLMContextMenuProvider implements ContextMenuItemsProvider {
 
             SwingUtilities.invokeLater(() -> {
                 if (response.isSuccess()) {
-                    dialog.setResult(response.getContent());
+                    dialog.setResult(formatResultWithHeader("Custom Analysis", items, response.getContent()));
                 } else {
                     dialog.setResult("Error: " + response.getErrorMessage());
                 }
@@ -180,13 +182,13 @@ public class LLMContextMenuProvider implements ContextMenuItemsProvider {
         ));
     }
 
-    private boolean checkApiKey() {
-        if (!clientFactory.hasValidApiKey()) {
+    private boolean checkConfig() {
+        if (!clientFactory.hasValidConfig()) {
             Frame parentFrame = api.userInterface().swingUtils().suiteFrame();
             JOptionPane.showMessageDialog(parentFrame,
-                    "Please configure an API key in the extension settings first.\n" +
-                            "Go to Settings > Extensions > AI Pal",
-                    "API Key Required",
+                    "Please configure the LLM provider in the extension settings first.\n" +
+                            "Go to AI Pal > Settings",
+                    "Configuration Required",
                     JOptionPane.WARNING_MESSAGE);
             return false;
         }
@@ -205,6 +207,35 @@ public class LLMContextMenuProvider implements ContextMenuItemsProvider {
             sb.append(HttpRequestFormatter.format(item));
             sb.append("\n\n");
         }
+        return sb.toString();
+    }
+
+    /**
+     * Format the analysis result with a header (like Atlas-AI).
+     */
+    private String formatResultWithHeader(String analysisType, List<HttpRequestResponse> items, String content) {
+        StringBuilder sb = new StringBuilder();
+        String divider = "============================================================";
+        String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+
+        sb.append("AI PAL SECURITY ANALYSIS\n");
+        sb.append(divider).append("\n");
+
+        // Add target info from first request
+        if (!items.isEmpty()) {
+            HttpRequestResponse first = items.get(0);
+            if (first.request() != null) {
+                String url = first.request().url();
+                sb.append("Target: ").append(url).append("\n");
+            }
+        }
+
+        sb.append("Analysis Type: ").append(analysisType).append("\n");
+        sb.append("Provider: ").append(settingsManager.getActiveProvider().getDisplayName()).append("\n");
+        sb.append("Time: ").append(timestamp).append("\n");
+        sb.append(divider).append("\n\n");
+        sb.append(content);
+
         return sb.toString();
     }
 }

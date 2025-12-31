@@ -47,6 +47,20 @@ public class ConversationHistory {
         addMessage(new ChatMessage(ChatMessage.Role.ASSISTANT, content));
     }
 
+    /**
+     * Add an assistant message without notifying listeners.
+     * Used when streaming has already displayed the content.
+     */
+    public void addAssistantMessageSilent(String content) {
+        messages.add(new ChatMessage(ChatMessage.Role.ASSISTANT, content));
+
+        // Trim history if too large
+        while (messages.size() > MAX_HISTORY_SIZE) {
+            messages.remove(0);
+        }
+        // Don't notify listeners - content already displayed via streaming
+    }
+
     public void addSystemMessage(String content) {
         addMessage(new ChatMessage(ChatMessage.Role.SYSTEM, content));
     }

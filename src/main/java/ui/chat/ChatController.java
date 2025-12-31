@@ -2,16 +2,24 @@ package ui.chat;
 
 import burp.api.montoya.MontoyaApi;
 import burp.api.montoya.http.message.HttpRequestResponse;
-
-import java.awt.*;
+import ui.AIPalSuiteTab;
 
 public class ChatController {
     private final MontoyaApi api;
     private final ChatTab chatTab;
+    private AIPalSuiteTab suiteTab;
 
     public ChatController(MontoyaApi api, ChatTab chatTab) {
         this.api = api;
         this.chatTab = chatTab;
+    }
+
+    /**
+     * Set the suite tab reference for tab selection functionality.
+     * Called after AIPalSuiteTab is created.
+     */
+    public void setSuiteTab(AIPalSuiteTab suiteTab) {
+        this.suiteTab = suiteTab;
     }
 
     public void sendToChat(HttpRequestResponse requestResponse) {
@@ -21,13 +29,9 @@ public class ChatController {
 
         chatTab.showInChat(requestResponse);
 
-        // We can't programmatically select a suite tab via Montoya, but we can at least bring Burp to front.
-        try {
-            Frame f = api.userInterface().swingUtils().suiteFrame();
-            f.toFront();
-            f.requestFocus();
-        } catch (Exception ignored) {
-            // best-effort only
+        // Select the AI Pal suite tab and bring it to focus with orange underline
+        if (suiteTab != null) {
+            suiteTab.selectTab(AIPalSuiteTab.CHAT_TAB);
         }
     }
 }

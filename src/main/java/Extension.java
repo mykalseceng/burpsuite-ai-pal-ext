@@ -40,6 +40,7 @@ public class Extension implements BurpExtension {
 
         // Register context menu provider (includes "Chat" action)
         ChatController chatController = new ChatController(api, chatTab);
+        chatController.setSuiteTab(aiPalSuiteTab);  // Enable tab selection with orange underline
         api.userInterface().registerContextMenuItemsProvider(
                 new LLMContextMenuProvider(api, clientFactory, threadManager, settingsManager, chatController)
         );

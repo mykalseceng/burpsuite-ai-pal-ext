@@ -6,11 +6,10 @@ AI Pal is a Burp Suite extension that integrates Large Language Models (LLMs) to
 
 ### Multi-Provider LLM Support
 
-AI Pal supports three major LLM providers:
+AI Pal supports two LLM providers:
 
-- **OpenAI** - GPT-4o, GPT-4o Mini, and newer models
-- **Google Gemini** - Gemini Flash and Pro models
-- **Anthropic Claude** - Claude Opus, Sonnet, and Haiku models
+- **Ollama** - Run models locally with complete privacy (Llama, Mistral, CodeLlama, and more)
+- **AWS Bedrock** - Enterprise-grade access to Claude, Llama, and other foundation models
 
 Switch between providers seamlessly in the Settings tab with model selection for each provider.
 
@@ -57,19 +56,21 @@ Track all AI analysis operations in a dedicated tab:
 
 - Burp Suite Professional or Community Edition
 - Java 21 or higher
-- API key from at least one supported provider (OpenAI, Google, or Anthropic)
+- One of the following:
+  - **Ollama** installed locally ([ollama.ai](https://ollama.ai))
+  - **AWS account** with Bedrock access and configured credentials
 
 ### Building from Source
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/ai-pal.git
-cd ai-pal
+git clone https://github.com/yourusername/burpsuite-ai-pal-ext.git
+cd burpsuite-ai-pal-ext
 
 # Build the extension
 ./gradlew jar
 
-# The JAR file is created at build/libs/llm-security-assistant.jar
+# The JAR file is created at build/libs/burpsuite-ai-pal-ext.jar
 ```
 
 ### Loading into Burp Suite
@@ -77,7 +78,7 @@ cd ai-pal
 1. In Burp, go to **Extensions > Installed**
 2. Click **Add**
 3. Under **Extension details**, click **Select file**
-4. Select `build/libs/llm-security-assistant.jar`
+4. Select `build/libs/burpsuite-ai-pal-ext.jar`
 5. Click **Next**
 
 ## Configuration
@@ -85,15 +86,37 @@ cd ai-pal
 1. After loading the extension, open the **AI Pal** tab
 2. Navigate to the **Settings** sub-tab
 3. Select your preferred LLM provider
-4. Enter your API key for that provider
-5. Choose a model (each provider has multiple options)
+4. Configure the provider settings (see below)
+5. Choose a model
 6. Click **Test Connection** to verify your setup
 
-### API Keys
+### Ollama Setup
 
-- **OpenAI**: Get from [platform.openai.com](https://platform.openai.com/api-keys)
-- **Google Gemini**: Get from [Google AI Studio](https://aistudio.google.com/apikey)
-- **Anthropic Claude**: Get from [console.anthropic.com](https://console.anthropic.com/)
+1. Install Ollama from [ollama.ai](https://ollama.ai)
+2. Pull a model: `ollama pull llama3.2` (or your preferred model)
+3. Ensure Ollama is running (default: `http://localhost:11434`)
+4. In AI Pal settings, select **Ollama** and enter the base URL
+
+**Recommended models for security analysis:**
+- `llama3.2` - Good balance of speed and capability
+- `mistral` - Fast and capable
+- `codellama` - Optimized for code analysis
+- `deepseek-coder` - Strong at code understanding
+
+### AWS Bedrock Setup
+
+1. Ensure you have an AWS account with Bedrock access enabled
+2. Configure AWS credentials using one of these methods:
+   - Environment variables (`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`)
+   - AWS credentials file (`~/.aws/credentials`)
+   - IAM role (when running on AWS infrastructure)
+3. In AI Pal settings, select **AWS Bedrock** and choose your region
+
+**Available models:**
+- `anthropic.claude-3-5-sonnet-20241022-v2:0` - Best for complex analysis
+- `anthropic.claude-3-5-haiku-20241022-v1:0` - Fast and cost-effective
+- `meta.llama3-70b-instruct-v1:0` - Open-source alternative
+- `amazon.titan-text-premier-v1:0` - AWS native model
 
 ## Usage
 
@@ -134,9 +157,8 @@ src/main/java/
 │   ├── LLMClientFactory.java
 │   ├── LLMResponse.java
 │   ├── impl/
-│   │   ├── ClaudeClient.java
-│   │   ├── GeminiClient.java
-│   │   └── OpenAIClient.java
+│   │   ├── OllamaClient.java
+│   │   └── BedrockClient.java
 │   └── prompts/
 │       └── PromptTemplates.java
 ├── ui/                      # User interface components
@@ -178,7 +200,9 @@ src/main/java/
 
 ## Security Considerations
 
-- API keys are stored in Burp's preferences (encrypted by Burp)
+- **Ollama**: All data stays local - no external API calls
+- **AWS Bedrock**: Data is sent to AWS; follows your organization's AWS security policies
+- AWS credentials are managed via standard AWS SDK credential chain (not stored by the extension)
 - All LLM requests go through Burp's HTTP stack, respecting proxy settings
 - HTTP content sent to LLMs may contain sensitive data - review before sending
 
@@ -186,7 +210,8 @@ src/main/java/
 
 - Burp Suite 2024.1+ (uses Montoya API 2025.10)
 - Java 21
-- Internet access to LLM provider APIs
+- For Ollama: Local Ollama installation with at least one model
+- For AWS Bedrock: AWS credentials with Bedrock access and internet connectivity
 
 ## License
 

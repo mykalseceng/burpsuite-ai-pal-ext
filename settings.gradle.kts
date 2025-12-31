@@ -1,1 +1,1 @@
-rootProject.name = "llm-security-assistant"
+rootProject.name = "burpsuite-ai-pal-ext"

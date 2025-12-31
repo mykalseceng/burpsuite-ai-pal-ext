@@ -1,9 +1,8 @@
 package config;
 
 public enum LLMProvider {
-    OPENAI("OpenAI", "api.openai.com"),
-    GEMINI("Google Gemini", "generativelanguage.googleapis.com"),
-    CLAUDE("Anthropic Claude", "api.anthropic.com");
+    OLLAMA("Ollama", "localhost:11434"),
+    BEDROCK("AWS Bedrock", "bedrock-runtime.us-east-1.amazonaws.com");
 
     private final String displayName;
     private final String apiHost;

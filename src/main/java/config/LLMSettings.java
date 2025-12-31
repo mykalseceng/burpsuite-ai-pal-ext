@@ -2,43 +2,45 @@ package config;
 
 public class LLMSettings {
     private LLMProvider activeProvider;
-    private String openaiApiKey;
-    private String openaiModel;
-    private String geminiApiKey;
-    private String geminiModel;
-    private String claudeApiKey;
-    private String claudeModel;
 
-    // Latest models as of December 2025
-    public static final String[] OPENAI_MODELS = {
-        "gpt-5.2",              // GPT-5.2 Thinking - best for coding and planning
-        "gpt-5.2-chat-latest",  // GPT-5.2 Instant - faster for writing
-        "gpt-5.2-pro",          // GPT-5.2 Pro - most accurate
-        "gpt-4o",               // GPT-4o - reliable fallback
-        "gpt-4o-mini"           // GPT-4o Mini - cost-effective
+    // Ollama settings
+    private String ollamaBaseUrl;
+    private String ollamaModel;
+
+    // Bedrock settings
+    private String bedrockAccessKey;
+    private String bedrockSecretKey;
+    private String bedrockSessionToken;
+    private String bedrockRegion;
+    private String bedrockModel;
+
+    // AWS Bedrock models - Anthropic Claude global inference profiles
+    public static final String[] BEDROCK_MODELS = {
+        "global.anthropic.claude-sonnet-4-5-20250929-v1:0",
+        "global.anthropic.claude-sonnet-4-20250514-v1:0",
+        "global.anthropic.claude-haiku-4-5-20251001-v1:0",
+        "global.anthropic.claude-opus-4-5-20251101-v1:0"
     };
 
-    public static final String[] GEMINI_MODELS = {
-        "gemini-3-flash",       // Gemini 3 Flash - frontier intelligence, fast
-        "gemini-3-pro",         // Gemini 3 Pro - most powerful
-        "gemini-2.5-flash",     // Gemini 2.5 Flash - previous gen
-        "gemini-2.5-pro"        // Gemini 2.5 Pro - previous gen
-    };
-
-    public static final String[] CLAUDE_MODELS = {
-        "claude-opus-4-5-20251101",       // Claude Opus 4.5 - most capable
-        "claude-sonnet-4-5-20250929",     // Claude Sonnet 4.5 - balanced
-        "claude-haiku-4-5-20251001"       // Claude Haiku 4.5 - fast, cost-efficient
+    // AWS Bedrock regions that support Bedrock
+    public static final String[] BEDROCK_REGIONS = {
+        "us-east-1",
+        "us-west-2",
+        "eu-west-1",
+        "eu-central-1",
+        "ap-southeast-1",
+        "ap-northeast-1"
     };
 
     public LLMSettings() {
-        this.activeProvider = LLMProvider.OPENAI;
-        this.openaiApiKey = "";
-        this.openaiModel = "gpt-5.2";
-        this.geminiApiKey = "";
-        this.geminiModel = "gemini-3-flash";
-        this.claudeApiKey = "";
-        this.claudeModel = "claude-sonnet-4-5-20250929";
+        this.activeProvider = LLMProvider.OLLAMA;
+        this.ollamaBaseUrl = "http://localhost:11434";
+        this.ollamaModel = "llama3.2";
+        this.bedrockAccessKey = "";
+        this.bedrockSecretKey = "";
+        this.bedrockSessionToken = "";
+        this.bedrockRegion = "us-east-1";
+        this.bedrockModel = "global.anthropic.claude-sonnet-4-5-20250929-v1:0";
     }
 
     public LLMProvider getActiveProvider() {
@@ -49,91 +51,111 @@ public class LLMSettings {
         this.activeProvider = activeProvider;
     }
 
-    public String getOpenaiApiKey() {
-        return openaiApiKey;
+    // Ollama getters/setters
+    public String getOllamaBaseUrl() {
+        return ollamaBaseUrl;
     }
 
-    public void setOpenaiApiKey(String openaiApiKey) {
-        this.openaiApiKey = openaiApiKey;
+    public void setOllamaBaseUrl(String ollamaBaseUrl) {
+        this.ollamaBaseUrl = ollamaBaseUrl;
     }
 
-    public String getOpenaiModel() {
-        return openaiModel;
+    public String getOllamaModel() {
+        return ollamaModel;
     }
 
-    public void setOpenaiModel(String openaiModel) {
-        this.openaiModel = openaiModel;
+    public void setOllamaModel(String ollamaModel) {
+        this.ollamaModel = ollamaModel;
     }
 
-    public String getGeminiApiKey() {
-        return geminiApiKey;
+    // Bedrock getters/setters
+    public String getBedrockAccessKey() {
+        return bedrockAccessKey;
     }
 
-    public void setGeminiApiKey(String geminiApiKey) {
-        this.geminiApiKey = geminiApiKey;
+    public void setBedrockAccessKey(String bedrockAccessKey) {
+        this.bedrockAccessKey = bedrockAccessKey;
     }
 
-    public String getGeminiModel() {
-        return geminiModel;
+    public String getBedrockSecretKey() {
+        return bedrockSecretKey;
     }
 
-    public void setGeminiModel(String geminiModel) {
-        this.geminiModel = geminiModel;
+    public void setBedrockSecretKey(String bedrockSecretKey) {
+        this.bedrockSecretKey = bedrockSecretKey;
     }
 
-    public String getClaudeApiKey() {
-        return claudeApiKey;
+    public String getBedrockSessionToken() {
+        return bedrockSessionToken;
     }
 
-    public void setClaudeApiKey(String claudeApiKey) {
-        this.claudeApiKey = claudeApiKey;
+    public void setBedrockSessionToken(String bedrockSessionToken) {
+        this.bedrockSessionToken = bedrockSessionToken;
     }
 
-    public String getClaudeModel() {
-        return claudeModel;
+    public String getBedrockRegion() {
+        return bedrockRegion;
     }
 
-    public void setClaudeModel(String claudeModel) {
-        this.claudeModel = claudeModel;
+    public void setBedrockRegion(String bedrockRegion) {
+        this.bedrockRegion = bedrockRegion;
     }
 
-    public String getApiKey(LLMProvider provider) {
-        return switch (provider) {
-            case OPENAI -> openaiApiKey;
-            case GEMINI -> geminiApiKey;
-            case CLAUDE -> claudeApiKey;
-        };
+    public String getBedrockModel() {
+        return bedrockModel;
     }
 
+    public void setBedrockModel(String bedrockModel) {
+        this.bedrockModel = bedrockModel;
+    }
+
+    // Generic accessors for provider abstraction
     public String getModel(LLMProvider provider) {
         return switch (provider) {
-            case OPENAI -> openaiModel;
-            case GEMINI -> geminiModel;
-            case CLAUDE -> claudeModel;
+            case OLLAMA -> ollamaModel;
+            case BEDROCK -> bedrockModel;
         };
-    }
-
-    public void setApiKey(LLMProvider provider, String apiKey) {
-        switch (provider) {
-            case OPENAI -> openaiApiKey = apiKey;
-            case GEMINI -> geminiApiKey = apiKey;
-            case CLAUDE -> claudeApiKey = apiKey;
-        }
     }
 
     public void setModel(LLMProvider provider, String model) {
         switch (provider) {
-            case OPENAI -> openaiModel = model;
-            case GEMINI -> geminiModel = model;
-            case CLAUDE -> claudeModel = model;
+            case OLLAMA -> ollamaModel = model;
+            case BEDROCK -> bedrockModel = model;
         }
     }
 
     public static String[] getModelsForProvider(LLMProvider provider) {
         return switch (provider) {
-            case OPENAI -> OPENAI_MODELS;
-            case GEMINI -> GEMINI_MODELS;
-            case CLAUDE -> CLAUDE_MODELS;
+            case OLLAMA -> new String[0]; // Ollama models are user-specified
+            case BEDROCK -> BEDROCK_MODELS;
         };
+    }
+
+    /**
+     * Check if the provider has valid configuration.
+     * For Ollama: needs base URL
+     * For Bedrock: needs either env credentials or explicit keys
+     */
+    public boolean hasValidConfig(LLMProvider provider) {
+        return switch (provider) {
+            case OLLAMA -> ollamaBaseUrl != null && !ollamaBaseUrl.trim().isEmpty();
+            case BEDROCK -> hasBedrockCredentials();
+        };
+    }
+
+    private boolean hasBedrockCredentials() {
+        // Check for explicit credentials
+        boolean hasExplicit = bedrockAccessKey != null && !bedrockAccessKey.trim().isEmpty()
+                && bedrockSecretKey != null && !bedrockSecretKey.trim().isEmpty();
+
+        // Check for environment credentials
+        boolean hasEnv = System.getenv("AWS_ACCESS_KEY_ID") != null
+                && System.getenv("AWS_SECRET_ACCESS_KEY") != null;
+
+        // Check for default credentials file (we assume it might exist)
+        boolean hasProfile = System.getenv("AWS_PROFILE") != null
+                || System.getProperty("user.home") != null;
+
+        return hasExplicit || hasEnv || hasProfile;
     }
 }

@@ -4,9 +4,8 @@ import burp.api.montoya.http.Http;
 import burp.api.montoya.logging.Logging;
 import config.LLMProvider;
 import config.SettingsManager;
-import llm.impl.ClaudeClient;
-import llm.impl.GeminiClient;
-import llm.impl.OpenAIClient;
+import llm.impl.BedrockClient;
+import llm.impl.OllamaClient;
 
 public class LLMClientFactory {
     private final Http http;
@@ -25,23 +24,38 @@ public class LLMClientFactory {
     }
 
     public LLMClient createClient(LLMProvider provider) {
-        String apiKey = settingsManager.getApiKey(provider);
         String model = settingsManager.getModel(provider);
 
         return switch (provider) {
-            case OPENAI -> new OpenAIClient(http, logging, apiKey, model);
-            case GEMINI -> new GeminiClient(http, logging, apiKey, model);
-            case CLAUDE -> new ClaudeClient(http, logging, apiKey, model);
+            case OLLAMA -> new OllamaClient(
+                    http,
+                    logging,
+                    settingsManager.getOllamaBaseUrl(),
+                    model
+            );
+            case BEDROCK -> new BedrockClient(
+                    http,
+                    logging,
+                    settingsManager.getBedrockAccessKey(),
+                    settingsManager.getBedrockSecretKey(),
+                    settingsManager.getBedrockSessionToken(),
+                    settingsManager.getBedrockRegion(),
+                    model
+            );
         };
     }
 
-    public boolean hasValidApiKey() {
-        String apiKey = settingsManager.getCurrentApiKey();
-        return apiKey != null && !apiKey.trim().isEmpty();
+    /**
+     * Check if the current provider has valid configuration.
+     */
+    public boolean hasValidConfig() {
+        return settingsManager.hasValidConfig();
     }
 
-    public boolean hasValidApiKey(LLMProvider provider) {
-        String apiKey = settingsManager.getApiKey(provider);
-        return apiKey != null && !apiKey.trim().isEmpty();
+    /**
+     * Check if a specific provider has valid configuration.
+     */
+    public boolean hasValidConfig(LLMProvider provider) {
+        return settingsManager.hasValidConfig(provider);
     }
 }
