@@ -12,6 +12,7 @@ import com.google.gson.JsonParser;
 import llm.LLMClient;
 import llm.LLMResponse;
 import ui.chat.ChatMessage;
+import util.AwsCredentialsUtil;
 import util.Utf16Sanitizer;
 
 import javax.crypto.Mac;
@@ -59,95 +60,29 @@ public class BedrockClient implements LLMClient {
 
     private String[] resolveCredentials(String explicitAccess, String explicitSecret, String explicitSession) {
         // 1. Use explicit credentials if provided
-        if (!isBlank(explicitAccess) && !isBlank(explicitSecret)) {
-            return new String[]{explicitAccess.trim(), explicitSecret.trim(), normalize(explicitSession)};
+        if (!AwsCredentialsUtil.isBlank(explicitAccess) && !AwsCredentialsUtil.isBlank(explicitSecret)) {
+            return new String[]{
+                    explicitAccess.trim(),
+                    explicitSecret.trim(),
+                    AwsCredentialsUtil.normalize(explicitSession)
+            };
         }
 
-        // 2. Try environment variables
-        String envAccess = System.getenv("AWS_ACCESS_KEY_ID");
-        String envSecret = System.getenv("AWS_SECRET_ACCESS_KEY");
-        String envSession = System.getenv("AWS_SESSION_TOKEN");
-        if (!isBlank(envAccess) && !isBlank(envSecret)) {
-            return new String[]{envAccess.trim(), envSecret.trim(), normalize(envSession)};
+        // 2. Try environment variables (using shared utility)
+        AwsCredentialsUtil.CredentialsResult envCreds = AwsCredentialsUtil.loadFromEnv();
+        if (envCreds != null && envCreds.isValid()) {
+            return new String[]{envCreds.accessKey, envCreds.secretKey, envCreds.sessionToken};
         }
 
-        // 3. Try AWS credentials file
-        String[] fileCreds = loadCredentialsFromFile();
-        if (fileCreds != null) {
-            return fileCreds;
+        // 3. Try AWS credentials file (using shared utility)
+        String profile = AwsCredentialsUtil.getEffectiveProfile();
+        AwsCredentialsUtil.CredentialsResult fileCreds = AwsCredentialsUtil.loadFromFile(profile);
+        if (fileCreds != null && fileCreds.isValid()) {
+            return new String[]{fileCreds.accessKey, fileCreds.secretKey, fileCreds.sessionToken};
         }
 
         // No credentials found
         return new String[]{null, null, null};
-    }
-
-    private String[] loadCredentialsFromFile() {
-        String home = System.getProperty("user.home");
-        if (home == null) return null;
-
-        java.io.File credFile = new java.io.File(home, ".aws/credentials");
-        if (!credFile.exists() || !credFile.canRead()) return null;
-
-        String profile = System.getenv("AWS_DEFAULT_PROFILE");
-        if (profile == null || profile.isBlank()) {
-            profile = "default";
-        } else {
-            profile = profile.trim();
-        }
-
-        try (java.io.BufferedReader reader = new java.io.BufferedReader(new java.io.FileReader(credFile))) {
-            String line;
-            boolean inProfile = false;
-            String accessKey = null;
-            String secretKey = null;
-            String sessionToken = null;
-
-            while ((line = reader.readLine()) != null) {
-                String trimmed = line.trim();
-
-                // Check for profile header
-                if (trimmed.isEmpty() || trimmed.startsWith("#") || trimmed.startsWith(";")) {
-                    continue;
-                }
-                if (trimmed.startsWith("[") && trimmed.endsWith("]")) {
-                    String currentProfile = trimmed.substring(1, trimmed.length() - 1).trim();
-                    inProfile = currentProfile.equals(profile);
-                    continue;
-                }
-
-                if (inProfile && trimmed.contains("=")) {
-                    String[] parts = trimmed.split("=", 2);
-                    String key = parts[0].trim();
-                    String value = parts[1].trim();
-
-                    switch (key) {
-                        case "aws_access_key_id" -> accessKey = value;
-                        case "aws_secret_access_key" -> secretKey = value;
-                        case "aws_session_token" -> sessionToken = value;
-                    }
-                }
-            }
-
-            if (!isBlank(accessKey) && !isBlank(secretKey)) {
-                return new String[]{accessKey.trim(), secretKey.trim(), normalize(sessionToken)};
-            }
-        } catch (Exception e) {
-            logging.logToError("Failed to read AWS credentials file: " + e.getMessage());
-        }
-
-        return null;
-    }
-
-    private static boolean isBlank(String value) {
-        return value == null || value.trim().isEmpty();
-    }
-
-    private static String normalize(String value) {
-        if (value == null) {
-            return null;
-        }
-        String trimmed = value.trim();
-        return trimmed.isEmpty() ? null : trimmed;
     }
 
     @Override

@@ -1,5 +1,7 @@
 package config;
 
+import util.AwsCredentialsUtil;
+
 public class LLMSettings {
     private LLMProvider activeProvider;
 
@@ -144,84 +146,18 @@ public class LLMSettings {
     }
 
     private boolean hasBedrockCredentials() {
-        // Check for explicit credentials in settings
-        boolean hasExplicit = bedrockAccessKey != null && !bedrockAccessKey.trim().isEmpty()
-                && bedrockSecretKey != null && !bedrockSecretKey.trim().isEmpty();
+        // Check for explicit credentials in settings (using shared isBlank check)
+        boolean hasExplicit = !AwsCredentialsUtil.isBlank(bedrockAccessKey)
+                && !AwsCredentialsUtil.isBlank(bedrockSecretKey);
 
-        // Check for environment credentials
-        boolean hasEnv = System.getenv("AWS_ACCESS_KEY_ID") != null
-                && System.getenv("AWS_SECRET_ACCESS_KEY") != null;
+        // Check for environment credentials (using shared validation that checks for blank values)
+        boolean hasEnv = AwsCredentialsUtil.hasValidEnvCredentials();
 
-        // Check for shared credentials file with the selected profile.
-        boolean hasProfile = hasCredentialsFileProfile();
+        // Check for shared credentials file with the selected profile (using shared parser)
+        String profile = AwsCredentialsUtil.getEffectiveProfile();
+        AwsCredentialsUtil.CredentialsResult fileCreds = AwsCredentialsUtil.loadFromFile(profile);
+        boolean hasProfile = fileCreds != null && fileCreds.isValid();
 
         return hasExplicit || hasEnv || hasProfile;
-    }
-
-    private boolean hasCredentialsFileProfile() {
-        String home = System.getProperty("user.home");
-        if (home == null || home.isBlank()) {
-            return false;
-        }
-
-        java.io.File credFile = new java.io.File(home, ".aws/credentials");
-        if (!credFile.exists() || !credFile.canRead()) {
-            return false;
-        }
-
-        String profile = System.getenv("AWS_DEFAULT_PROFILE");
-        if (profile == null || profile.isBlank()) {
-            profile = "default";
-        } else {
-            profile = profile.trim();
-        }
-
-        return credentialsFileHasProfile(credFile, profile);
-    }
-
-    private boolean credentialsFileHasProfile(java.io.File file, String profile) {
-        boolean inProfile = false;
-        boolean hasAccessKey = false;
-        boolean hasSecretKey = false;
-
-        try (java.io.BufferedReader reader = new java.io.BufferedReader(new java.io.FileReader(file))) {
-            String line;
-            while ((line = reader.readLine()) != null) {
-                String trimmed = line.trim();
-                if (trimmed.isEmpty() || trimmed.startsWith("#") || trimmed.startsWith(";")) {
-                    continue;
-                }
-                if (trimmed.startsWith("[") && trimmed.endsWith("]")) {
-                    String section = trimmed.substring(1, trimmed.length() - 1).trim();
-                    inProfile = section.equals(profile);
-                    if (!inProfile) {
-                        hasAccessKey = false;
-                        hasSecretKey = false;
-                    }
-                    continue;
-                }
-                if (!inProfile) {
-                    continue;
-                }
-                int idx = trimmed.indexOf('=');
-                if (idx < 0) {
-                    continue;
-                }
-                String key = trimmed.substring(0, idx).trim();
-                String value = trimmed.substring(idx + 1).trim();
-                if (key.equals("aws_access_key_id") && !value.isEmpty()) {
-                    hasAccessKey = true;
-                } else if (key.equals("aws_secret_access_key") && !value.isEmpty()) {
-                    hasSecretKey = true;
-                }
-                if (hasAccessKey && hasSecretKey) {
-                    return true;
-                }
-            }
-        } catch (Exception ignored) {
-            return false;
-        }
-
-        return false;
     }
 }
