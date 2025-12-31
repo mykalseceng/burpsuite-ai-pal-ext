@@ -21,7 +21,7 @@ public class LLMSecurityAssistantHttpRequestEditor implements ExtensionProvidedH
 
     @Override
     public String caption() {
-        return "LLM Security Assistant";
+        return "AI Pal";
     }
 
     @Override

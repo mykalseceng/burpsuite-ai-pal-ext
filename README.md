@@ -8,10 +8,10 @@ AI Pal is a Burp Suite extension that integrates Large Language Models (LLMs) to
 
 AI Pal supports two LLM providers:
 
-- **Ollama** - Run models locally with complete privacy (Llama, Mistral, CodeLlama, and more)
-- **AWS Bedrock** - Enterprise-grade access to Claude, Llama, and other foundation models
+- **Ollama** - Run models locally with complete privacy (Llama, Mistral, DeepSeek, and more)
+- **AWS Bedrock** - Enterprise-grade access to Claude models via AWS infrastructure
 
-Switch between providers seamlessly in the Settings tab with model selection for each provider.
+Switch between providers seamlessly in the Settings tab with automatic credential detection.
 
 ### Context Menu Actions
 
@@ -30,41 +30,110 @@ Right-click on any request/response in Burp to access AI-powered analysis:
 A built-in chat interface for conversational security analysis:
 
 - Multi-turn conversations with conversation history
+- Streaming responses for real-time output (Ollama)
 - Send HTTP requests/responses directly to chat from context menu
 - Ask follow-up questions about vulnerabilities
 - Get help with payload crafting and testing strategies
 
 ### Editor Integration
 
-AI Pal adds an "AI Security Assistant" tab to the HTTP request and response editors in Repeater and other tools:
+AI Pal adds an "AI Pal" tab to the HTTP request and response editors in Repeater and other tools:
 
-- Analyze requests directly from the editor
-- Track analysis tasks in the AI Tasks tab
-- Results appear inline without leaving your workflow
+- Write custom prompts with attached request/response context
+- Toggle which context to include (Request, Response, Notes)
+- Track analysis tasks in the Tasks tab
+- Results appear without leaving your workflow
 
-### AI Tasks Dashboard
+### Tasks Dashboard
 
 Track all AI analysis operations in a dedicated tab:
 
-- View status of running analyses
-- Review past analysis results
-- Manage concurrent AI operations
+- View status of running analyses (pending, running, completed, failed)
+- Review past analysis results with full context
+- See the prompt, result, and original request/response for each task
+
+## Prerequisites
+
+Before using AI Pal, you need to set up at least one LLM provider:
+
+### Option 1: Ollama (Recommended for Privacy)
+
+Ollama runs models locally on your machine - no data leaves your computer.
+
+1. **Install Ollama** from [ollama.ai](https://ollama.ai/download)
+2. **Pull a model**:
+   ```bash
+   ollama pull llama3.2
+   ```
+3. **Start the Ollama server** (usually starts automatically):
+   ```bash
+   ollama serve
+   ```
+4. **Verify it's running**:
+   ```bash
+   curl http://localhost:11434/api/tags
+   ```
+
+**Recommended models for security analysis:**
+| Model | Size | Best For |
+|-------|------|----------|
+| `llama3.2` | 3B | Fast general analysis |
+| `llama3.1:8b` | 8B | Better reasoning |
+| `mistral` | 7B | Good balance of speed/quality |
+| `deepseek-r1` | 7B+ | Strong reasoning with thinking output |
+| `codellama` | 7B | Code-focused analysis |
+
+### Option 2: AWS Bedrock (Enterprise)
+
+AWS Bedrock provides access to Claude models with enterprise security and compliance.
+
+**Requirements:**
+- AWS account with Bedrock access enabled in your region
+- IAM permissions for `bedrock:InvokeModel`
+- Model access granted in the AWS Bedrock console
+
+**Configure credentials using one of these methods (in priority order):**
+
+1. **Environment variables**:
+   ```bash
+   export AWS_ACCESS_KEY_ID=your_access_key
+   export AWS_SECRET_ACCESS_KEY=your_secret_key
+   # Optional for temporary credentials:
+   export AWS_SESSION_TOKEN=your_session_token
+   ```
+
+2. **AWS credentials file** (`~/.aws/credentials`):
+   ```ini
+   [default]
+   aws_access_key_id = your_access_key
+   aws_secret_access_key = your_secret_key
+
+   # Or use a named profile:
+   [my-profile]
+   aws_access_key_id = your_access_key
+   aws_secret_access_key = your_secret_key
+   ```
+   Set `AWS_DEFAULT_PROFILE=my-profile` to use a named profile.
+
+3. **Manual entry** in AI Pal settings (credentials stored in Burp preferences)
+
+**Available models (Global Inference Profiles):**
+| Model | Best For |
+|-------|----------|
+| `claude-sonnet-4-5` | Complex security analysis |
+| `claude-sonnet-4` | Balanced performance |
+| `claude-haiku-4-5` | Fast, cost-effective |
+| `claude-opus-4-5` | Most capable |
+
+**Supported regions:** us-east-1, us-west-2, eu-west-1, eu-central-1, ap-southeast-1, ap-northeast-1
 
 ## Installation
-
-### Prerequisites
-
-- Burp Suite Professional or Community Edition
-- Java 21 or higher
-- One of the following:
-  - **Ollama** installed locally ([ollama.ai](https://ollama.ai))
-  - **AWS account** with Bedrock access and configured credentials
 
 ### Building from Source
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/burpsuite-ai-pal-ext.git
+git clone https://github.com/mykalseceng/burpsuite-ai-pal-ext.git
 cd burpsuite-ai-pal-ext
 
 # Build the extension
@@ -83,71 +152,57 @@ cd burpsuite-ai-pal-ext
 
 ## Configuration
 
-1. After loading the extension, open the **AI Pal** tab
+1. After loading the extension, open the **AI Pal** tab in Burp
 2. Navigate to the **Settings** sub-tab
-3. Select your preferred LLM provider
-4. Configure the provider settings (see below)
-5. Choose a model
+3. Select your preferred LLM provider (Ollama or AWS Bedrock)
+4. The settings panel shows your credential status:
+   - For Ollama: Connection status and loaded model
+   - For Bedrock: Which credential source is being used
+5. Choose a model and region (for Bedrock)
 6. Click **Test Connection** to verify your setup
-
-### Ollama Setup
-
-1. Install Ollama from [ollama.ai](https://ollama.ai)
-2. Pull a model: `ollama pull llama3.2` (or your preferred model)
-3. Ensure Ollama is running (default: `http://localhost:11434`)
-4. In AI Pal settings, select **Ollama** and enter the base URL
-
-**Recommended models for security analysis:**
-- `llama3.2` - Good balance of speed and capability
-- `mistral` - Fast and capable
-- `codellama` - Optimized for code analysis
-- `deepseek-coder` - Strong at code understanding
-
-### AWS Bedrock Setup
-
-1. Ensure you have an AWS account with Bedrock access enabled
-2. Configure AWS credentials using one of these methods:
-   - Environment variables (`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`)
-   - AWS credentials file (`~/.aws/credentials`)
-   - IAM role (when running on AWS infrastructure)
-3. In AI Pal settings, select **AWS Bedrock** and choose your region
-
-**Available models:**
-- `anthropic.claude-3-5-sonnet-20241022-v2:0` - Best for complex analysis
-- `anthropic.claude-3-5-haiku-20241022-v1:0` - Fast and cost-effective
-- `meta.llama3-70b-instruct-v1:0` - Open-source alternative
-- `amazon.titan-text-premier-v1:0` - AWS native model
 
 ## Usage
 
-### Quick Analysis
+### Quick Analysis (Context Menu)
 
 1. Capture traffic in Proxy or navigate to any request in Burp
 2. Right-click on the request/response
-3. Select **AI Pal > Analyze for Vulnerabilities**
+3. Select **AI Pal > Analyze for Vulnerabilities** (or other options)
 4. Review the analysis in the popup dialog
 
 ### Interactive Chat
 
-1. Right-click a request and select **AI Pal > Chat**
-2. The request is loaded into the Chat tab
-3. Ask questions like:
+1. Go to the **AI Pal > Chat** tab
+2. Type your question and press Enter (or click Send)
+3. For context, right-click a request and select **AI Pal > Chat**
+4. Example questions:
    - "What parameters are most likely vulnerable?"
-   - "Generate XSS payloads for the search parameter"
-   - "Explain the authentication flow"
+   - "Generate SQLi payloads for the id parameter"
+   - "Explain the authentication flow in this request"
 
-### Editor Integration
+### Editor Integration (AI Pal Tab)
 
-1. Open a request in Repeater
-2. Select the **AI Security Assistant** tab
-3. Use the analysis buttons to examine the request
-4. View your task in the **AI Tasks** sub-tab
+1. Open a request in Repeater or click on any request
+2. In the request/response viewer, select the **AI Pal** tab
+3. Write your prompt in the text area
+4. Toggle context: **Request** | **Response** | **Notes**
+5. Click **Analyze**
+6. View results in the **Tasks** tab
+
+### Tasks Tab
+
+- Lists all AI analysis tasks with status icons:
+  - ⏳ Pending
+  - ▶ Running
+  - ✓ Completed
+  - ! Failed
+- Click a task to see full details: prompt, result, and original context
 
 ## Project Structure
 
 ```
 src/main/java/
-├── Extension.java          # Main entry point
+├── Extension.java           # Main entry point
 ├── config/                  # Settings and provider configuration
 │   ├── LLMProvider.java
 │   ├── LLMSettings.java
@@ -170,6 +225,7 @@ src/main/java/
 │   ├── settings/
 │   └── tasks/
 └── util/                    # Utilities
+    ├── AwsCredentialsUtil.java
     ├── HttpRequestFormatter.java
     ├── ThreadManager.java
     └── Utf16Sanitizer.java
@@ -191,18 +247,12 @@ src/main/java/
 2. Run `./gradlew jar`
 3. In Burp: Hold **Ctrl/Cmd** and click the **Loaded** checkbox next to AI Pal
 
-### Adding a New LLM Provider
-
-1. Add the provider to `config/LLMProvider.java`
-2. Add models to `config/LLMSettings.java`
-3. Create a new client in `llm/impl/`
-4. Register in `LLMClientFactory.java`
-
 ## Security Considerations
 
 - **Ollama**: All data stays local - no external API calls
 - **AWS Bedrock**: Data is sent to AWS; follows your organization's AWS security policies
-- AWS credentials are managed via standard AWS SDK credential chain (not stored by the extension)
+- AWS credentials from environment variables or credentials file are preferred over manual entry
+- Manual credentials entered in settings are stored in Burp preferences (not encrypted)
 - All LLM requests go through Burp's HTTP stack, respecting proxy settings
 - HTTP content sent to LLMs may contain sensitive data - review before sending
 
@@ -210,8 +260,24 @@ src/main/java/
 
 - Burp Suite 2024.1+ (uses Montoya API 2025.10)
 - Java 21
-- For Ollama: Local Ollama installation with at least one model
-- For AWS Bedrock: AWS credentials with Bedrock access and internet connectivity
+- **For Ollama**: Local Ollama installation with at least one model pulled
+- **For AWS Bedrock**: AWS account with Bedrock model access enabled
+
+## Troubleshooting
+
+### Ollama not connecting
+- Ensure Ollama is running: `ollama serve`
+- Check the base URL (default: `http://localhost:11434`)
+- Verify a model is pulled: `ollama list`
+
+### AWS Bedrock signature errors
+- Verify your credentials are valid: `aws sts get-caller-identity`
+- Ensure you have Bedrock model access in the AWS console
+- Check the region matches where you have access
+
+### Extension not loading
+- Ensure Java 21+ is installed
+- Check Burp's Extensions > Errors tab for details
 
 ## License
 
@@ -220,4 +286,3 @@ MIT License
 ## Acknowledgments
 
 - Built using the [Burp Montoya API](https://portswigger.github.io/burp-extensions-montoya-api/javadoc/burp/api/montoya/MontoyaApi.html)
-- Inspired by the PortSwigger extension template

@@ -17,6 +17,7 @@ import util.Utf16Sanitizer;
 
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
+import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.time.ZoneOffset;
@@ -40,6 +41,7 @@ public class BedrockClient implements LLMClient {
     private final String sessionToken;
     private final String region;
     private final String model;
+    private String credentialSource = "unknown";
 
     public BedrockClient(Http http, Logging logging, String accessKey, String secretKey,
                          String sessionToken, String region, String model) {
@@ -61,6 +63,7 @@ public class BedrockClient implements LLMClient {
     private String[] resolveCredentials(String explicitAccess, String explicitSecret, String explicitSession) {
         // 1. Use explicit credentials if provided
         if (!AwsCredentialsUtil.isBlank(explicitAccess) && !AwsCredentialsUtil.isBlank(explicitSecret)) {
+            credentialSource = "settings";
             return new String[]{
                     explicitAccess.trim(),
                     explicitSecret.trim(),
@@ -71,6 +74,7 @@ public class BedrockClient implements LLMClient {
         // 2. Try environment variables (using shared utility)
         AwsCredentialsUtil.CredentialsResult envCreds = AwsCredentialsUtil.loadFromEnv();
         if (envCreds != null && envCreds.isValid()) {
+            credentialSource = "environment";
             return new String[]{envCreds.accessKey, envCreds.secretKey, envCreds.sessionToken};
         }
 
@@ -78,11 +82,17 @@ public class BedrockClient implements LLMClient {
         String profile = AwsCredentialsUtil.getEffectiveProfile();
         AwsCredentialsUtil.CredentialsResult fileCreds = AwsCredentialsUtil.loadFromFile(profile);
         if (fileCreds != null && fileCreds.isValid()) {
+            credentialSource = "file:" + profile;
             return new String[]{fileCreds.accessKey, fileCreds.secretKey, fileCreds.sessionToken};
         }
 
         // No credentials found
+        credentialSource = "none";
         return new String[]{null, null, null};
+    }
+
+    private String getCredentialSource() {
+        return credentialSource;
     }
 
     @Override
@@ -156,7 +166,10 @@ public class BedrockClient implements LLMClient {
         }
 
         String host = "bedrock-runtime." + region + ".amazonaws.com";
-        String path = "/model/" + model + "/invoke";
+        // Raw path for HTTP request (Burp will URL-encode it)
+        String rawPath = "/model/" + model + "/invoke";
+        // URL-encoded path for canonical request signature (must match what AWS receives)
+        String canonicalPath = "/model/" + URLEncoder.encode(model, StandardCharsets.UTF_8).replace("+", "%20") + "/invoke";
         String body = Utf16Sanitizer.sanitize(requestBody.toString());
         ByteArray bodyBytes = ByteArray.byteArray(body.getBytes(StandardCharsets.UTF_8));
 
@@ -168,26 +181,26 @@ public class BedrockClient implements LLMClient {
         try {
             String contentHash = sha256Hex(body);
 
-            // Build canonical headers and signed headers based on whether session token is present
+            // Build canonical headers and signed headers
+            // Note: Only sign host and x-amz-content-sha256 as required by Bedrock
+            // x-amz-date is sent as a header but not included in signature
             String canonicalHeaders;
             String signedHeaders;
             if (sessionToken != null && !sessionToken.isEmpty()) {
                 canonicalHeaders = "host:" + host + "\n" +
                         "x-amz-content-sha256:" + contentHash + "\n" +
-                        "x-amz-date:" + amzDate + "\n" +
                         "x-amz-security-token:" + sessionToken + "\n";
-                signedHeaders = "host;x-amz-content-sha256;x-amz-date;x-amz-security-token";
+                signedHeaders = "host;x-amz-content-sha256;x-amz-security-token";
             } else {
                 canonicalHeaders = "host:" + host + "\n" +
-                        "x-amz-content-sha256:" + contentHash + "\n" +
-                        "x-amz-date:" + amzDate + "\n";
-                signedHeaders = "host;x-amz-content-sha256;x-amz-date";
+                        "x-amz-content-sha256:" + contentHash + "\n";
+                signedHeaders = "host;x-amz-content-sha256";
             }
 
-            // Create canonical request
+            // Create canonical request (use encoded path for signature)
             String canonicalRequest = String.join("\n",
                     "POST",
-                    path,
+                    canonicalPath,
                     "",  // query string
                     canonicalHeaders,
                     signedHeaders,
@@ -216,7 +229,7 @@ public class BedrockClient implements LLMClient {
             HttpRequest request = HttpRequest.httpRequest()
                     .withService(HttpService.httpService(host, 443, true))
                     .withMethod("POST")
-                    .withPath(path)
+                    .withPath(rawPath)
                     .withHeader("Host", host)
                     .withHeader("Content-Type", "application/json")
                     .withHeader("X-Amz-Date", amzDate)

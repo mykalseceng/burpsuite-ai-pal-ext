@@ -25,7 +25,7 @@ public class LLMSecurityAssistantEditorPanel extends JPanel {
 
     private final JTextArea promptArea = new JTextArea(4, 60);
     private final JTextArea notesArea = new JTextArea(4, 60);
-    private final JButton sendButton = new JButton("➤");
+    private final JButton sendButton = new JButton("Analyze");
     private final JLabel statusLabel = new JLabel("Ready");
 
     private final JToggleButton attachRequest = new JToggleButton("Request", true);
@@ -68,7 +68,7 @@ public class LLMSecurityAssistantEditorPanel extends JPanel {
 
         JPanel right = new JPanel(new BorderLayout(6, 6));
 
-        sendButton.setToolTipText("Send (creates a task)");
+        sendButton.setToolTipText("Run analysis (results appear in Tasks tab)");
         sendButton.addActionListener(e -> send());
         right.add(sendButton, BorderLayout.NORTH);
 

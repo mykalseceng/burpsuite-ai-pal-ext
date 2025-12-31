@@ -48,7 +48,7 @@ public class ChatPanel extends JPanel implements ConversationHistory.Conversatio
         // Chat display area
         chatDisplay = new JTextPane();
         chatDisplay.setEditable(false);
-        chatDisplay.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 13));
+        chatDisplay.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 13));
         JScrollPane chatScroll = new JScrollPane(chatDisplay);
         chatScroll.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_ALWAYS);
         add(chatScroll, BorderLayout.CENTER);
@@ -60,7 +60,7 @@ public class ChatPanel extends JPanel implements ConversationHistory.Conversatio
         inputArea = new JTextArea(3, 40);
         inputArea.setLineWrap(true);
         inputArea.setWrapStyleWord(true);
-        inputArea.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 13));
+        inputArea.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 13));
         inputArea.addKeyListener(new KeyAdapter() {
             @Override
             public void keyPressed(KeyEvent e) {

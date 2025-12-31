@@ -5,6 +5,7 @@ import config.LLMSettings;
 import config.SettingsManager;
 import llm.LLMClientFactory;
 import llm.LLMResponse;
+import util.AwsCredentialsUtil;
 
 import javax.swing.*;
 import javax.swing.border.TitledBorder;
@@ -31,6 +32,8 @@ public class LLMSettingsPanel extends JPanel {
     private JPasswordField bedrockSecretKeyField;
     private JPasswordField bedrockSessionTokenField;
     private JComboBox<String> bedrockRegionDropdown;
+    private JLabel bedrockStatusLabel;
+    private JPanel bedrockCredentialsPanel;
 
     public LLMSettingsPanel(SettingsManager settingsManager, LLMClientFactory clientFactory) {
         this.settingsManager = settingsManager;
@@ -43,7 +46,7 @@ public class LLMSettingsPanel extends JPanel {
         mainPanel.setLayout(new BoxLayout(mainPanel, BoxLayout.Y_AXIS));
 
         // Title
-        JLabel titleLabel = new JLabel("LLM Security Assistant Settings");
+        JLabel titleLabel = new JLabel("AI Pal Settings");
         titleLabel.setFont(titleLabel.getFont().deriveFont(Font.BOLD, 16f));
         titleLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
         titleLabel.setBorder(BorderFactory.createEmptyBorder(0, 0, 15, 0));
@@ -544,7 +547,7 @@ public class LLMSettingsPanel extends JPanel {
                 TitledBorder.TOP
         ));
         panel.setAlignmentX(Component.LEFT_ALIGNMENT);
-        panel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 320));
+        panel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 380));
 
         // Radio button row
         JPanel radioRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 5));
@@ -561,6 +564,18 @@ public class LLMSettingsPanel extends JPanel {
         radioRow.setAlignmentX(Component.LEFT_ALIGNMENT);
         panel.add(radioRow);
 
+        // Credential status row - shows where credentials are coming from
+        JPanel statusRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 5));
+        statusRow.add(new JLabel("Credentials:"));
+        bedrockStatusLabel = new JLabel();
+        bedrockStatusLabel.setFont(bedrockStatusLabel.getFont().deriveFont(Font.BOLD, 12f));
+        statusRow.add(bedrockStatusLabel);
+        JButton refreshCredsButton = new JButton("Refresh");
+        refreshCredsButton.addActionListener(e -> updateBedrockCredentialStatus());
+        statusRow.add(refreshCredsButton);
+        statusRow.setAlignmentX(Component.LEFT_ALIGNMENT);
+        panel.add(statusRow);
+
         // Region row
         JPanel regionRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 5));
         regionRow.add(new JLabel("Region:"));
@@ -575,52 +590,6 @@ public class LLMSettingsPanel extends JPanel {
         regionRow.add(bedrockRegionDropdown);
         regionRow.setAlignmentX(Component.LEFT_ALIGNMENT);
         panel.add(regionRow);
-
-        // Access Key row
-        JPanel accessKeyRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 5));
-        accessKeyRow.add(new JLabel("Access Key:"));
-        bedrockAccessKeyField = new JPasswordField(35);
-        bedrockAccessKeyField.setText(settingsManager.getBedrockAccessKey());
-        bedrockAccessKeyField.getDocument().addDocumentListener(new SimpleDocumentListener(() -> {
-            settingsManager.setBedrockAccessKey(new String(bedrockAccessKeyField.getPassword()));
-        }));
-        accessKeyRow.add(bedrockAccessKeyField);
-        accessKeyRow.setAlignmentX(Component.LEFT_ALIGNMENT);
-        panel.add(accessKeyRow);
-
-        // Secret Key row
-        JPanel secretKeyRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 5));
-        secretKeyRow.add(new JLabel("Secret Key:"));
-        bedrockSecretKeyField = new JPasswordField(35);
-        bedrockSecretKeyField.setText(settingsManager.getBedrockSecretKey());
-        bedrockSecretKeyField.getDocument().addDocumentListener(new SimpleDocumentListener(() -> {
-            settingsManager.setBedrockSecretKey(new String(bedrockSecretKeyField.getPassword()));
-        }));
-        secretKeyRow.add(bedrockSecretKeyField);
-        secretKeyRow.setAlignmentX(Component.LEFT_ALIGNMENT);
-        panel.add(secretKeyRow);
-
-        // Session Token row (optional, for temporary credentials)
-        JPanel sessionTokenRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 5));
-        sessionTokenRow.add(new JLabel("Session Token:"));
-        bedrockSessionTokenField = new JPasswordField(35);
-        bedrockSessionTokenField.setText(settingsManager.getBedrockSessionToken());
-        bedrockSessionTokenField.getDocument().addDocumentListener(new SimpleDocumentListener(() -> {
-            settingsManager.setBedrockSessionToken(new String(bedrockSessionTokenField.getPassword()));
-        }));
-        sessionTokenRow.add(bedrockSessionTokenField);
-        sessionTokenRow.add(new JLabel("(optional)"));
-        sessionTokenRow.setAlignmentX(Component.LEFT_ALIGNMENT);
-        panel.add(sessionTokenRow);
-
-        // Security warning row
-        JPanel warningRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 2));
-        JLabel warningLabel = new JLabel("Note: Credentials stored in Burp preferences. Use env vars or ~/.aws/credentials for better security.");
-        warningLabel.setFont(warningLabel.getFont().deriveFont(Font.ITALIC, 10f));
-        warningLabel.setForeground(new Color(150, 100, 0)); // Dark orange/warning color
-        warningRow.add(warningLabel);
-        warningRow.setAlignmentX(Component.LEFT_ALIGNMENT);
-        panel.add(warningRow);
 
         // Model selection row
         JPanel modelRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 5));
@@ -643,7 +612,98 @@ public class LLMSettingsPanel extends JPanel {
         modelRow.setAlignmentX(Component.LEFT_ALIGNMENT);
         panel.add(modelRow);
 
+        // Collapsible credentials panel
+        bedrockCredentialsPanel = new JPanel();
+        bedrockCredentialsPanel.setLayout(new BoxLayout(bedrockCredentialsPanel, BoxLayout.Y_AXIS));
+        bedrockCredentialsPanel.setBorder(BorderFactory.createTitledBorder(
+                BorderFactory.createEtchedBorder(),
+                "Manual Credentials (Optional - only needed if not using env vars or ~/.aws/credentials)",
+                TitledBorder.LEFT,
+                TitledBorder.TOP
+        ));
+        bedrockCredentialsPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        // Access Key row
+        JPanel accessKeyRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 5));
+        accessKeyRow.add(new JLabel("Access Key:"));
+        bedrockAccessKeyField = new JPasswordField(35);
+        bedrockAccessKeyField.setText(settingsManager.getBedrockAccessKey());
+        bedrockAccessKeyField.getDocument().addDocumentListener(new SimpleDocumentListener(() -> {
+            settingsManager.setBedrockAccessKey(new String(bedrockAccessKeyField.getPassword()));
+            updateBedrockCredentialStatus();
+        }));
+        accessKeyRow.add(bedrockAccessKeyField);
+        accessKeyRow.setAlignmentX(Component.LEFT_ALIGNMENT);
+        bedrockCredentialsPanel.add(accessKeyRow);
+
+        // Secret Key row
+        JPanel secretKeyRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 5));
+        secretKeyRow.add(new JLabel("Secret Key:"));
+        bedrockSecretKeyField = new JPasswordField(35);
+        bedrockSecretKeyField.setText(settingsManager.getBedrockSecretKey());
+        bedrockSecretKeyField.getDocument().addDocumentListener(new SimpleDocumentListener(() -> {
+            settingsManager.setBedrockSecretKey(new String(bedrockSecretKeyField.getPassword()));
+            updateBedrockCredentialStatus();
+        }));
+        secretKeyRow.add(bedrockSecretKeyField);
+        secretKeyRow.setAlignmentX(Component.LEFT_ALIGNMENT);
+        bedrockCredentialsPanel.add(secretKeyRow);
+
+        // Session Token row (optional, for temporary credentials)
+        JPanel sessionTokenRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 5));
+        sessionTokenRow.add(new JLabel("Session Token:"));
+        bedrockSessionTokenField = new JPasswordField(35);
+        bedrockSessionTokenField.setText(settingsManager.getBedrockSessionToken());
+        bedrockSessionTokenField.getDocument().addDocumentListener(new SimpleDocumentListener(() -> {
+            settingsManager.setBedrockSessionToken(new String(bedrockSessionTokenField.getPassword()));
+        }));
+        sessionTokenRow.add(bedrockSessionTokenField);
+        sessionTokenRow.add(new JLabel("(optional)"));
+        sessionTokenRow.setAlignmentX(Component.LEFT_ALIGNMENT);
+        bedrockCredentialsPanel.add(sessionTokenRow);
+
+        panel.add(bedrockCredentialsPanel);
+
+        // Update credential status on load
+        updateBedrockCredentialStatus();
+
         return panel;
+    }
+
+    /**
+     * Update the Bedrock credential status label to show where credentials are coming from.
+     */
+    private void updateBedrockCredentialStatus() {
+        // Check explicit settings first
+        String accessKey = settingsManager.getBedrockAccessKey();
+        String secretKey = settingsManager.getBedrockSecretKey();
+        if (!AwsCredentialsUtil.isBlank(accessKey) && !AwsCredentialsUtil.isBlank(secretKey)) {
+            bedrockStatusLabel.setText("Using manual credentials from settings");
+            bedrockStatusLabel.setForeground(new Color(0, 150, 0));
+            return;
+        }
+
+        // Check environment variables
+        if (AwsCredentialsUtil.hasValidEnvCredentials()) {
+            String sessionInfo = System.getenv("AWS_SESSION_TOKEN") != null ? " (with session token)" : "";
+            bedrockStatusLabel.setText("Using environment variables" + sessionInfo);
+            bedrockStatusLabel.setForeground(new Color(0, 150, 0));
+            return;
+        }
+
+        // Check credentials file
+        String profile = AwsCredentialsUtil.getEffectiveProfile();
+        AwsCredentialsUtil.CredentialsResult fileCreds = AwsCredentialsUtil.loadFromFile(profile);
+        if (fileCreds != null && fileCreds.isValid()) {
+            String sessionInfo = fileCreds.sessionToken != null ? " (with session token)" : "";
+            bedrockStatusLabel.setText("Using ~/.aws/credentials [" + profile + "]" + sessionInfo);
+            bedrockStatusLabel.setForeground(new Color(0, 150, 0));
+            return;
+        }
+
+        // No credentials found
+        bedrockStatusLabel.setText("No credentials configured - enter below or set up env vars/credentials file");
+        bedrockStatusLabel.setForeground(new Color(200, 0, 0));
     }
 
     private void testConnection(LLMProvider provider, JButton button) {
