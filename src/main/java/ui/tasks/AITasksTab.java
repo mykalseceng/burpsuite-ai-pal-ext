@@ -1,13 +1,27 @@
 package ui.tasks;
 
-import burp.api.montoya.MontoyaApi;
+import static base.Api.api;
 
-import javax.swing.*;
+import java.awt.BorderLayout;
+import java.awt.Component;
+import java.awt.Font;
+
+import javax.swing.Box;
+import javax.swing.BoxLayout;
+import javax.swing.DefaultListCellRenderer;
+import javax.swing.DefaultListModel;
+import javax.swing.JComponent;
+import javax.swing.JLabel;
+import javax.swing.JList;
+import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+import javax.swing.JSplitPane;
+import javax.swing.JTextArea;
+import javax.swing.ListSelectionModel;
+import javax.swing.SwingUtilities;
 import javax.swing.border.EmptyBorder;
-import java.awt.*;
 
 public class AITasksTab extends JPanel implements AITaskManager.Listener {
-    private final MontoyaApi api;
     private final AITaskManager taskManager;
 
     private final DefaultListModel<AITask> listModel = new DefaultListModel<>();
@@ -18,8 +32,7 @@ public class AITasksTab extends JPanel implements AITaskManager.Listener {
     private final JTextArea resultArea = new JTextArea();
     private final JTextArea reqResArea = new JTextArea();
 
-    public AITasksTab(MontoyaApi api, AITaskManager taskManager) {
-        this.api = api;
+    public AITasksTab(AITaskManager taskManager) {
         this.taskManager = taskManager;
 
         setLayout(new BorderLayout());
@@ -32,7 +45,6 @@ public class AITasksTab extends JPanel implements AITaskManager.Listener {
         split.setRightComponent(buildRight());
         add(split, BorderLayout.CENTER);
 
-        // Initial population
         for (AITask t : this.taskManager.tasks()) {
             listModel.addElement(t);
         }
@@ -44,7 +56,27 @@ public class AITasksTab extends JPanel implements AITaskManager.Listener {
         });
 
         this.taskManager.addListener(this);
-        this.api.userInterface().applyThemeToComponent(this);
+        api.userInterface().applyThemeToComponent(this);
+    }
+
+    @Override
+    public void onTaskAdded(AITask task) {
+        SwingUtilities.invokeLater(() -> {
+            listModel.add(0, task);
+            if (listModel.size() == 1) {
+                taskList.setSelectedIndex(0);
+            }
+        });
+    }
+
+    @Override
+    public void onTaskUpdated(AITask task) {
+        SwingUtilities.invokeLater(() -> {
+            taskList.repaint();
+            if (task == taskList.getSelectedValue()) {
+                renderSelected();
+            }
+        });
     }
 
     private Component buildLeft() {
@@ -92,23 +124,6 @@ public class AITasksTab extends JPanel implements AITaskManager.Listener {
         configureTextArea(reqResArea);
 
         return right;
-    }
-
-    private static void configureTextArea(JTextArea area) {
-        area.setEditable(false);
-        area.setLineWrap(true);
-        area.setWrapStyleWord(true);
-        area.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 12));
-    }
-
-    private static JComponent section(String label, JTextArea area, int rows) {
-        JPanel p = new JPanel(new BorderLayout(4, 4));
-        JLabel l = new JLabel(label);
-        l.setFont(l.getFont().deriveFont(Font.BOLD));
-        p.add(l, BorderLayout.NORTH);
-        area.setRows(rows);
-        p.add(new JScrollPane(area), BorderLayout.CENTER);
-        return p;
     }
 
     private void renderSelected() {
@@ -159,35 +174,33 @@ public class AITasksTab extends JPanel implements AITaskManager.Listener {
         reqResArea.setCaretPosition(0);
     }
 
-    @Override
-    public void onTaskAdded(AITask task) {
-        SwingUtilities.invokeLater(() -> {
-            listModel.add(0, task);
-            if (listModel.size() == 1) {
-                taskList.setSelectedIndex(0);
-            }
-        });
+    private static void configureTextArea(JTextArea area) {
+        area.setEditable(false);
+        area.setLineWrap(true);
+        area.setWrapStyleWord(true);
+        area.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 13));
     }
 
-    @Override
-    public void onTaskUpdated(AITask task) {
-        SwingUtilities.invokeLater(() -> {
-            taskList.repaint();
-            if (task == taskList.getSelectedValue()) {
-                renderSelected();
-            }
-        });
+    private static JComponent section(String label, JTextArea area, int rows) {
+        JPanel p = new JPanel(new BorderLayout(4, 4));
+        JLabel l = new JLabel(label);
+        l.setFont(l.getFont().deriveFont(Font.BOLD));
+        p.add(l, BorderLayout.NORTH);
+        area.setRows(rows);
+        p.add(new JScrollPane(area), BorderLayout.CENTER);
+        return p;
     }
 
     private static class TaskCellRenderer extends DefaultListCellRenderer {
         @Override
-        public Component getListCellRendererComponent(JList<?> list, Object value, int index, boolean isSelected, boolean cellHasFocus) {
+        public Component getListCellRendererComponent(JList<?> list, Object value, int index,
+                                                       boolean isSelected, boolean cellHasFocus) {
             super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
             if (value instanceof AITask t) {
                 String status = switch (t.status()) {
-                    case PENDING -> "⏳";
-                    case RUNNING -> "▶";
-                    case COMPLETED -> "✓";
+                    case PENDING -> "\u23f3";
+                    case RUNNING -> "\u25b6";
+                    case COMPLETED -> "\u2713";
                     case FAILED -> "!";
                 };
                 setText(status + " " + t.title());
@@ -196,5 +209,3 @@ public class AITasksTab extends JPanel implements AITaskManager.Listener {
         }
     }
 }
-
-

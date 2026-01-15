@@ -1,7 +1,24 @@
 package ui.editor;
 
-import burp.api.montoya.MontoyaApi;
+import static base.Api.api;
+
 import burp.api.montoya.http.message.HttpRequestResponse;
+
+import java.awt.BorderLayout;
+import java.awt.Component;
+import java.awt.FlowLayout;
+import java.awt.Font;
+
+import javax.swing.JButton;
+import javax.swing.JLabel;
+import javax.swing.JOptionPane;
+import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+import javax.swing.JTextArea;
+import javax.swing.JToggleButton;
+import javax.swing.SwingUtilities;
+import javax.swing.border.EmptyBorder;
+
 import config.SettingsManager;
 import llm.LLMClient;
 import llm.LLMClientFactory;
@@ -12,12 +29,7 @@ import ui.tasks.AITaskManager;
 import util.HttpRequestFormatter;
 import util.ThreadManager;
 
-import javax.swing.*;
-import javax.swing.border.EmptyBorder;
-import java.awt.*;
-
 public class LLMSecurityAssistantEditorPanel extends JPanel {
-    private final MontoyaApi api;
     private final LLMClientFactory clientFactory;
     private final ThreadManager threadManager;
     private final SettingsManager settingsManager;
@@ -34,14 +46,10 @@ public class LLMSecurityAssistantEditorPanel extends JPanel {
 
     private volatile HttpRequestResponse current;
 
-    public LLMSecurityAssistantEditorPanel(
-            MontoyaApi api,
-            LLMClientFactory clientFactory,
-            ThreadManager threadManager,
-            SettingsManager settingsManager,
-            AITaskManager taskManager
-    ) {
-        this.api = api;
+    public LLMSecurityAssistantEditorPanel(LLMClientFactory clientFactory,
+                                            ThreadManager threadManager,
+                                            SettingsManager settingsManager,
+                                            AITaskManager taskManager) {
         this.clientFactory = clientFactory;
         this.threadManager = threadManager;
         this.settingsManager = settingsManager;
@@ -54,7 +62,16 @@ public class LLMSecurityAssistantEditorPanel extends JPanel {
         add(buildNotes(), BorderLayout.CENTER);
         add(buildStatus(), BorderLayout.SOUTH);
 
-        this.api.userInterface().applyThemeToComponent(this);
+        api.userInterface().applyThemeToComponent(this);
+    }
+
+    public void setRequestResponse(HttpRequestResponse requestResponse) {
+        this.current = requestResponse;
+        boolean hasResp = requestResponse != null && requestResponse.response() != null;
+        attachResponse.setEnabled(hasResp);
+        if (!hasResp) {
+            attachResponse.setSelected(false);
+        }
     }
 
     private Component buildTop() {
@@ -100,15 +117,6 @@ public class LLMSecurityAssistantEditorPanel extends JPanel {
         return statusLabel;
     }
 
-    public void setRequestResponse(HttpRequestResponse requestResponse) {
-        this.current = requestResponse;
-        boolean hasResp = requestResponse != null && requestResponse.response() != null;
-        attachResponse.setEnabled(hasResp);
-        if (!hasResp) {
-            attachResponse.setSelected(false);
-        }
-    }
-
     private void send() {
         String userPrompt = promptArea.getText().trim();
         if (userPrompt.isEmpty()) {
@@ -146,7 +154,6 @@ public class LLMSecurityAssistantEditorPanel extends JPanel {
         task.markRunning();
         taskManager.addTask(task);
 
-        // Update UI state
         sendButton.setEnabled(false);
         statusLabel.setText("Sending to " + settingsManager.getActiveProvider().getDisplayName() + "...");
 
@@ -199,5 +206,3 @@ public class LLMSecurityAssistantEditorPanel extends JPanel {
         return sb.toString().trim();
     }
 }
-
-

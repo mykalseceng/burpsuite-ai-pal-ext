@@ -1,17 +1,26 @@
 package ui.chat;
 
-import burp.api.montoya.MontoyaApi;
 import burp.api.montoya.http.message.HttpRequestResponse;
+
+import java.awt.BorderLayout;
+import java.awt.Component;
+import java.awt.FlowLayout;
+import java.awt.Font;
+
+import javax.swing.BorderFactory;
+import javax.swing.JButton;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+import javax.swing.JTabbedPane;
+import javax.swing.JToolBar;
+import javax.swing.SwingUtilities;
+import javax.swing.border.EmptyBorder;
+
 import config.SettingsManager;
 import llm.LLMClientFactory;
 import util.ThreadManager;
 
-import javax.swing.*;
-import javax.swing.border.EmptyBorder;
-import java.awt.*;
-
 public class ChatTab extends JPanel {
-    private final MontoyaApi api;
     private final LLMClientFactory clientFactory;
     private final ThreadManager threadManager;
     private final SettingsManager settingsManager;
@@ -19,39 +28,30 @@ public class ChatTab extends JPanel {
     private final JTabbedPane sessions = new JTabbedPane();
     private int sessionCounter = 1;
 
-    public ChatTab(MontoyaApi api, LLMClientFactory clientFactory,
-                   ThreadManager threadManager, SettingsManager settingsManager) {
-        this.api = api;
+    public ChatTab(LLMClientFactory clientFactory, ThreadManager threadManager, SettingsManager settingsManager) {
         this.clientFactory = clientFactory;
         this.threadManager = threadManager;
         this.settingsManager = settingsManager;
 
         setLayout(new BorderLayout());
 
-        // Default session
         addSession("1");
         add(sessions, BorderLayout.CENTER);
 
-        // Top toolbar / instructions
         JToolBar toolbar = new JToolBar();
         toolbar.setFloatable(false);
 
-        JLabel infoLabel = new JLabel("In Proxy, right-click a request → Extensions → AI Pal → Chat (opens in AI Pal → Chat)");
+        JLabel infoLabel = new JLabel("In Proxy, right-click a request -> Extensions -> AI Pal -> Chat (opens in AI Pal -> Chat)");
         infoLabel.setFont(infoLabel.getFont().deriveFont(Font.ITALIC));
         toolbar.add(infoLabel);
 
         add(toolbar, BorderLayout.NORTH);
     }
 
-    /**
-     * Called by the context menu action to populate the request/response viewers
-     * and attach the message to the next chat prompt.
-     */
     public void showInChat(HttpRequestResponse requestResponse) {
         if (requestResponse == null) return;
 
         SwingUtilities.invokeLater(() -> {
-            // If current session has no messages and no request set yet, reuse it; otherwise open a new session.
             ChatSessionPanel current = getSelectedSession();
             boolean canReuse = current != null && current.isPristine();
 
@@ -61,7 +61,7 @@ public class ChatTab extends JPanel {
     }
 
     private ChatSessionPanel addSession(String title) {
-        ChatSessionPanel session = new ChatSessionPanel(api, clientFactory, threadManager, settingsManager);
+        ChatSessionPanel session = new ChatSessionPanel(clientFactory, threadManager, settingsManager);
         sessions.addTab(title, session);
         int idx = sessions.indexOfComponent(session);
         sessions.setSelectedIndex(idx);
@@ -76,7 +76,6 @@ public class ChatTab extends JPanel {
     }
 
     private String nextSessionTitle() {
-        // Numbered tabs only; user can rename as needed later.
         return String.valueOf(sessionCounter);
     }
 
@@ -85,7 +84,6 @@ public class ChatTab extends JPanel {
         if (idx < 0) return;
         sessions.removeTabAt(idx);
 
-        // Always keep at least one session available.
         if (sessions.getTabCount() == 0) {
             sessionCounter = 1;
             addSession("1");
@@ -101,7 +99,7 @@ public class ChatTab extends JPanel {
             JLabel label = new JLabel(title);
             add(label);
 
-            JButton close = new JButton("×");
+            JButton close = new JButton("\u00d7");
             close.setBorder(BorderFactory.createEmptyBorder(0, 4, 0, 4));
             close.setContentAreaFilled(false);
             close.setFocusable(false);

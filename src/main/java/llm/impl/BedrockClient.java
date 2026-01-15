@@ -1,22 +1,16 @@
 package llm.impl;
 
-import burp.api.montoya.http.Http;
-import burp.api.montoya.http.HttpService;
+import static base.Api.api;
+
 import burp.api.montoya.core.ByteArray;
+import burp.api.montoya.http.HttpService;
 import burp.api.montoya.http.message.HttpRequestResponse;
 import burp.api.montoya.http.message.requests.HttpRequest;
-import burp.api.montoya.logging.Logging;
+
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-import llm.LLMClient;
-import llm.LLMResponse;
-import ui.chat.ChatMessage;
-import util.AwsCredentialsUtil;
-import util.Utf16Sanitizer;
 
-import javax.crypto.Mac;
-import javax.crypto.spec.SecretKeySpec;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -25,17 +19,20 @@ import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 
-/**
- * LLM client for AWS Bedrock.
- * Supports Claude, Llama, Titan, and other models available on Bedrock.
- */
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
+
+import llm.LLMClient;
+import llm.LLMResponse;
+import ui.chat.ChatMessage;
+import util.AwsCredentialsUtil;
+import util.Utf16Sanitizer;
+
 public class BedrockClient implements LLMClient {
     private static final int MAX_TOKENS = 4096;
     private static final String SERVICE = "bedrock";
     private static final String ALGORITHM = "AWS4-HMAC-SHA256";
 
-    private final Http http;
-    private final Logging logging;
     private final String accessKey;
     private final String secretKey;
     private final String sessionToken;
@@ -43,56 +40,14 @@ public class BedrockClient implements LLMClient {
     private final String model;
     private String credentialSource = "unknown";
 
-    public BedrockClient(Http http, Logging logging, String accessKey, String secretKey,
-                         String sessionToken, String region, String model) {
-        this.http = http;
-        this.logging = logging;
+    public BedrockClient(String accessKey, String secretKey, String sessionToken, String region, String model) {
         this.region = region;
         this.model = model;
 
-        // Credential resolution order:
-        // 1. Explicit credentials from settings
-        // 2. Environment variables
-        // 3. Shared credentials file (~/.aws/credentials, AWS_DEFAULT_PROFILE)
         String[] resolvedCreds = resolveCredentials(accessKey, secretKey, sessionToken);
         this.accessKey = resolvedCreds[0];
         this.secretKey = resolvedCreds[1];
         this.sessionToken = resolvedCreds[2];
-    }
-
-    private String[] resolveCredentials(String explicitAccess, String explicitSecret, String explicitSession) {
-        // 1. Use explicit credentials if provided
-        if (!AwsCredentialsUtil.isBlank(explicitAccess) && !AwsCredentialsUtil.isBlank(explicitSecret)) {
-            credentialSource = "settings";
-            return new String[]{
-                    explicitAccess.trim(),
-                    explicitSecret.trim(),
-                    AwsCredentialsUtil.normalize(explicitSession)
-            };
-        }
-
-        // 2. Try environment variables (using shared utility)
-        AwsCredentialsUtil.CredentialsResult envCreds = AwsCredentialsUtil.loadFromEnv();
-        if (envCreds != null && envCreds.isValid()) {
-            credentialSource = "environment";
-            return new String[]{envCreds.accessKey, envCreds.secretKey, envCreds.sessionToken};
-        }
-
-        // 3. Try AWS credentials file (using shared utility)
-        String profile = AwsCredentialsUtil.getEffectiveProfile();
-        AwsCredentialsUtil.CredentialsResult fileCreds = AwsCredentialsUtil.loadFromFile(profile);
-        if (fileCreds != null && fileCreds.isValid()) {
-            credentialSource = "file:" + profile;
-            return new String[]{fileCreds.accessKey, fileCreds.secretKey, fileCreds.sessionToken};
-        }
-
-        // No credentials found
-        credentialSource = "none";
-        return new String[]{null, null, null};
-    }
-
-    private String getCredentialSource() {
-        return credentialSource;
     }
 
     @Override
@@ -101,7 +56,7 @@ public class BedrockClient implements LLMClient {
             JsonObject requestBody = buildRequestBody(prompt, systemPrompt, null);
             return invokeModel(requestBody);
         } catch (Exception e) {
-            logging.logToError("Bedrock API error: " + e.getMessage());
+            api.logging().logToError("Bedrock API error: " + e.getMessage());
             return LLMResponse.error("Bedrock API error: " + e.getMessage());
         }
     }
@@ -112,13 +67,59 @@ public class BedrockClient implements LLMClient {
             JsonObject requestBody = buildRequestBody(newMessage, null, messages);
             return invokeModel(requestBody);
         } catch (Exception e) {
-            logging.logToError("Bedrock chat error: " + e.getMessage());
+            api.logging().logToError("Bedrock chat error: " + e.getMessage());
             return LLMResponse.error("Bedrock chat error: " + e.getMessage());
         }
     }
 
+    @Override
+    public boolean testConnection() {
+        LLMResponse response = complete("Say 'OK' if you can read this.", null);
+        return response.isSuccess();
+    }
+
+    @Override
+    public String getProviderName() {
+        return "AWS Bedrock";
+    }
+
+    @Override
+    public String getModel() {
+        return model;
+    }
+
+    private String[] resolveCredentials(String explicitAccess, String explicitSecret, String explicitSession) {
+        if (!AwsCredentialsUtil.isBlank(explicitAccess) && !AwsCredentialsUtil.isBlank(explicitSecret)) {
+            credentialSource = "settings";
+            return new String[]{
+                    explicitAccess.trim(),
+                    explicitSecret.trim(),
+                    AwsCredentialsUtil.normalize(explicitSession)
+            };
+        }
+
+        AwsCredentialsUtil.CredentialsResult envCreds = AwsCredentialsUtil.loadFromEnv();
+        if (envCreds != null && envCreds.isValid()) {
+            credentialSource = "environment";
+            return new String[]{envCreds.accessKey, envCreds.secretKey, envCreds.sessionToken};
+        }
+
+        String profile = AwsCredentialsUtil.getEffectiveProfile();
+        AwsCredentialsUtil.CredentialsResult fileCreds = AwsCredentialsUtil.loadFromFile(profile);
+        if (fileCreds != null && fileCreds.isValid()) {
+            credentialSource = "file:" + profile;
+            return new String[]{fileCreds.accessKey, fileCreds.secretKey, fileCreds.sessionToken};
+        }
+
+        credentialSource = "none";
+        return new String[]{null, null, null};
+    }
+
+    private String getCredentialSource() {
+        return credentialSource;
+    }
+
     private JsonObject buildRequestBody(String prompt, String systemPrompt, List<ChatMessage> history) {
-        // Only Anthropic Claude models are supported via global inference profiles
         return buildClaudeRequest(prompt, systemPrompt, history);
     }
 
@@ -133,11 +134,9 @@ public class BedrockClient implements LLMClient {
 
         JsonArray messages = new JsonArray();
 
-        // Add history if present
         if (history != null) {
             for (ChatMessage msg : history) {
                 if (msg.getRole() == ChatMessage.Role.SYSTEM) {
-                    // Claude uses system as top-level field
                     requestBody.addProperty("system", Utf16Sanitizer.sanitize(msg.getFullContent()));
                     continue;
                 }
@@ -148,7 +147,6 @@ public class BedrockClient implements LLMClient {
             }
         }
 
-        // Add current message only if not empty
         if (prompt != null && !prompt.isEmpty()) {
             JsonObject userMsg = new JsonObject();
             userMsg.addProperty("role", "user");
@@ -166,14 +164,11 @@ public class BedrockClient implements LLMClient {
         }
 
         String host = "bedrock-runtime." + region + ".amazonaws.com";
-        // Raw path for HTTP request (Burp will URL-encode it)
         String rawPath = "/model/" + model + "/invoke";
-        // URL-encoded path for canonical request signature (must match what AWS receives)
         String canonicalPath = "/model/" + URLEncoder.encode(model, StandardCharsets.UTF_8).replace("+", "%20") + "/invoke";
         String body = Utf16Sanitizer.sanitize(requestBody.toString());
         ByteArray bodyBytes = ByteArray.byteArray(body.getBytes(StandardCharsets.UTF_8));
 
-        // Generate AWS Signature V4
         ZonedDateTime now = ZonedDateTime.now(ZoneOffset.UTC);
         String amzDate = now.format(DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmss'Z'"));
         String dateStamp = now.format(DateTimeFormatter.ofPattern("yyyyMMdd"));
@@ -181,9 +176,6 @@ public class BedrockClient implements LLMClient {
         try {
             String contentHash = sha256Hex(body);
 
-            // Build canonical headers and signed headers
-            // Note: Only sign host and x-amz-content-sha256 as required by Bedrock
-            // x-amz-date is sent as a header but not included in signature
             String canonicalHeaders;
             String signedHeaders;
             if (sessionToken != null && !sessionToken.isEmpty()) {
@@ -197,17 +189,15 @@ public class BedrockClient implements LLMClient {
                 signedHeaders = "host;x-amz-content-sha256";
             }
 
-            // Create canonical request (use encoded path for signature)
             String canonicalRequest = String.join("\n",
                     "POST",
                     canonicalPath,
-                    "",  // query string
+                    "",
                     canonicalHeaders,
                     signedHeaders,
                     contentHash
             );
 
-            // Create string to sign
             String credentialScope = dateStamp + "/" + region + "/" + SERVICE + "/aws4_request";
             String stringToSign = String.join("\n",
                     ALGORITHM,
@@ -216,11 +206,9 @@ public class BedrockClient implements LLMClient {
                     sha256Hex(canonicalRequest)
             );
 
-            // Calculate signature
             byte[] signingKey = getSignatureKey(secretKey, dateStamp, region, SERVICE);
             String signature = bytesToHex(hmacSha256(signingKey, stringToSign));
 
-            // Build authorization header
             String authorization = ALGORITHM + " " +
                     "Credential=" + accessKey + "/" + credentialScope + ", " +
                     "SignedHeaders=" + signedHeaders + ", " +
@@ -236,21 +224,19 @@ public class BedrockClient implements LLMClient {
                     .withHeader("X-Amz-Content-Sha256", contentHash)
                     .withHeader("Authorization", authorization);
 
-            // Add security token header for temporary credentials
             if (sessionToken != null && !sessionToken.isEmpty()) {
                 request = request.withHeader("X-Amz-Security-Token", sessionToken);
             }
 
             request = request.withBody(bodyBytes);
 
-            HttpRequestResponse response = http.sendRequest(request);
+            HttpRequestResponse response = api.http().sendRequest(request);
 
             if (response.response() == null) {
                 return LLMResponse.error("No response from AWS Bedrock");
             }
 
             int statusCode = response.response().statusCode();
-            // Explicitly decode as UTF-8 to handle special characters correctly
             String responseBody = new String(response.response().body().getBytes(), StandardCharsets.UTF_8);
 
             if (statusCode != 200) {
@@ -259,7 +245,7 @@ public class BedrockClient implements LLMClient {
 
             return parseResponse(responseBody);
         } catch (Exception e) {
-            logging.logToError("Failed to invoke Bedrock model: " + e.getMessage());
+            api.logging().logToError("Failed to invoke Bedrock model: " + e.getMessage());
             return LLMResponse.error("Failed to invoke Bedrock model: " + e.getMessage());
         }
     }
@@ -271,7 +257,6 @@ public class BedrockClient implements LLMClient {
             String content = "";
             int tokensUsed = 0;
 
-            // Parse Claude response format
             if (jsonResponse.has("content")) {
                 JsonArray contentArray = jsonResponse.getAsJsonArray("content");
                 StringBuilder sb = new StringBuilder();
@@ -291,12 +276,11 @@ public class BedrockClient implements LLMClient {
 
             return LLMResponse.success(content, tokensUsed);
         } catch (Exception e) {
-            logging.logToError("Failed to parse Bedrock response: " + e.getMessage());
+            api.logging().logToError("Failed to parse Bedrock response: " + e.getMessage());
             return LLMResponse.error("Failed to parse Bedrock response: " + e.getMessage());
         }
     }
 
-    // AWS Signature V4 helper methods
     private byte[] hmacSha256(byte[] key, String data) throws Exception {
         Mac mac = Mac.getInstance("HmacSHA256");
         mac.init(new SecretKeySpec(key, "HmacSHA256"));
@@ -323,21 +307,5 @@ public class BedrockClient implements LLMClient {
             sb.append(String.format("%02x", b));
         }
         return sb.toString();
-    }
-
-    @Override
-    public boolean testConnection() {
-        LLMResponse response = complete("Say 'OK' if you can read this.", null);
-        return response.isSuccess();
-    }
-
-    @Override
-    public String getProviderName() {
-        return "AWS Bedrock";
-    }
-
-    @Override
-    public String getModel() {
-        return model;
     }
 }

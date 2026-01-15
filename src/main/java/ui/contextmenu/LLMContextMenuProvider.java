@@ -1,9 +1,23 @@
 package ui.contextmenu;
 
-import burp.api.montoya.MontoyaApi;
+import static base.Api.api;
+
 import burp.api.montoya.http.message.HttpRequestResponse;
 import burp.api.montoya.ui.contextmenu.ContextMenuEvent;
 import burp.api.montoya.ui.contextmenu.ContextMenuItemsProvider;
+
+import java.awt.Component;
+import java.awt.Frame;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.List;
+
+import javax.swing.JMenu;
+import javax.swing.JMenuItem;
+import javax.swing.JOptionPane;
+import javax.swing.SwingUtilities;
+
 import config.SettingsManager;
 import llm.LLMClient;
 import llm.LLMClientFactory;
@@ -15,24 +29,14 @@ import ui.dialogs.CustomPromptDialog;
 import util.HttpRequestFormatter;
 import util.ThreadManager;
 
-import javax.swing.*;
-import java.awt.*;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.List;
-
 public class LLMContextMenuProvider implements ContextMenuItemsProvider {
-    private final MontoyaApi api;
     private final LLMClientFactory clientFactory;
     private final ThreadManager threadManager;
     private final SettingsManager settingsManager;
     private final ChatController chatController;
 
-    public LLMContextMenuProvider(MontoyaApi api, LLMClientFactory clientFactory,
-                                   ThreadManager threadManager, SettingsManager settingsManager,
-                                   ChatController chatController) {
-        this.api = api;
+    public LLMContextMenuProvider(LLMClientFactory clientFactory, ThreadManager threadManager,
+                                   SettingsManager settingsManager, ChatController chatController) {
         this.clientFactory = clientFactory;
         this.threadManager = threadManager;
         this.settingsManager = settingsManager;
@@ -48,7 +52,6 @@ public class LLMContextMenuProvider implements ContextMenuItemsProvider {
 
         JMenu root = new JMenu("AI Pal");
 
-        // Keep options in a single group, ordered alphabetically.
         JMenuItem analyzeItem = new JMenuItem("Analyze for Vulnerabilities");
         analyzeItem.addActionListener(e -> analyzeForVulnerabilities(selectedItems));
 
@@ -210,18 +213,13 @@ public class LLMContextMenuProvider implements ContextMenuItemsProvider {
         return sb.toString();
     }
 
-    /**
-     * Format the analysis result with a header (like Atlas-AI).
-     */
     private String formatResultWithHeader(String analysisType, List<HttpRequestResponse> items, String content) {
         StringBuilder sb = new StringBuilder();
         String divider = "============================================================";
         String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
 
-        sb.append("AI PAL SECURITY ANALYSIS\n");
         sb.append(divider).append("\n");
 
-        // Add target info from first request
         if (!items.isEmpty()) {
             HttpRequestResponse first = items.get(0);
             if (first.request() != null) {

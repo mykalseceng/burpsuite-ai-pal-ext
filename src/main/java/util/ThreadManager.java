@@ -1,17 +1,20 @@
 package util;
 
-import burp.api.montoya.logging.Logging;
+import static base.Api.api;
 
-import java.util.concurrent.*;
+import java.util.concurrent.Callable;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
 public class ThreadManager {
     private final ExecutorService executor;
-    private final Logging logging;
     private volatile boolean shutdown = false;
 
-    public ThreadManager(Logging logging) {
-        this.logging = logging;
+    public ThreadManager() {
         this.executor = Executors.newFixedThreadPool(3, r -> {
             Thread t = new Thread(r, "LLM-Worker");
             t.setDaemon(true);
@@ -28,7 +31,7 @@ public class ThreadManager {
             try {
                 return task.call();
             } catch (Exception e) {
-                logging.logToError("Background task failed: " + e.getMessage());
+                api.logging().logToError("Background task failed: " + e.getMessage());
                 throw new CompletionException(e);
             }
         }, executor);
@@ -43,7 +46,7 @@ public class ThreadManager {
             try {
                 task.run();
             } catch (Exception e) {
-                logging.logToError("Background task failed: " + e.getMessage());
+                api.logging().logToError("Background task failed: " + e.getMessage());
                 errorHandler.accept(e);
             }
         });
@@ -56,14 +59,14 @@ public class ThreadManager {
             if (!executor.awaitTermination(5, TimeUnit.SECONDS)) {
                 executor.shutdownNow();
                 if (!executor.awaitTermination(2, TimeUnit.SECONDS)) {
-                    logging.logToError("ThreadManager did not terminate cleanly");
+                    api.logging().logToError("ThreadManager did not terminate cleanly");
                 }
             }
         } catch (InterruptedException e) {
             executor.shutdownNow();
             Thread.currentThread().interrupt();
         }
-        logging.logToOutput("ThreadManager shut down");
+        api.logging().logToOutput("ThreadManager shut down");
     }
 
     public boolean isShutdown() {

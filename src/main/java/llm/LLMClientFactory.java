@@ -1,20 +1,14 @@
 package llm;
 
-import burp.api.montoya.http.Http;
-import burp.api.montoya.logging.Logging;
 import config.LLMProvider;
 import config.SettingsManager;
 import llm.impl.BedrockClient;
 import llm.impl.OllamaClient;
 
 public class LLMClientFactory {
-    private final Http http;
-    private final Logging logging;
     private final SettingsManager settingsManager;
 
-    public LLMClientFactory(Http http, Logging logging, SettingsManager settingsManager) {
-        this.http = http;
-        this.logging = logging;
+    public LLMClientFactory(SettingsManager settingsManager) {
         this.settingsManager = settingsManager;
     }
 
@@ -28,14 +22,10 @@ public class LLMClientFactory {
 
         return switch (provider) {
             case OLLAMA -> new OllamaClient(
-                    http,
-                    logging,
                     settingsManager.getOllamaBaseUrl(),
                     model
             );
             case BEDROCK -> new BedrockClient(
-                    http,
-                    logging,
                     settingsManager.getBedrockAccessKey(),
                     settingsManager.getBedrockSecretKey(),
                     settingsManager.getBedrockSessionToken(),
@@ -45,16 +35,10 @@ public class LLMClientFactory {
         };
     }
 
-    /**
-     * Check if the current provider has valid configuration.
-     */
     public boolean hasValidConfig() {
         return settingsManager.hasValidConfig();
     }
 
-    /**
-     * Check if a specific provider has valid configuration.
-     */
     public boolean hasValidConfig(LLMProvider provider) {
         return settingsManager.hasValidConfig(provider);
     }

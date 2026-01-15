@@ -9,7 +9,7 @@ public class AnalysisResultDialog extends JDialog {
     private final JTextArea resultArea;
 
     // Consistent styling like Atlas-AI
-    private static final Font RESULT_FONT = new Font(Font.MONOSPACED, Font.BOLD, 14);
+    private static final Font RESULT_FONT = new Font(Font.MONOSPACED, Font.PLAIN, 13);
     private static final Color BACKGROUND_COLOR = new Color(250, 250, 250);
 
     public AnalysisResultDialog(Frame parent, String title, String result) {
@@ -19,7 +19,13 @@ public class AnalysisResultDialog extends JDialog {
         setLocationRelativeTo(parent);
         setLayout(new BorderLayout());
 
-        // Result text area with improved styling
+        // Bold header at top
+        JLabel headerLabel = new JLabel("AI PAL SECURITY ANALYSIS");
+        headerLabel.setFont(new Font(Font.MONOSPACED, Font.BOLD, 15));
+        headerLabel.setBorder(new EmptyBorder(10, 15, 5, 15));
+        add(headerLabel, BorderLayout.NORTH);
+
+        // Result text area
         resultArea = new JTextArea(result);
         resultArea.setEditable(false);
         resultArea.setLineWrap(true);

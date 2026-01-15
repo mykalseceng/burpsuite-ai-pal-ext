@@ -129,9 +129,9 @@ public class LLMSettingsPanel extends JPanel {
                         int availableCount = tagsBody.split("\"name\"").length - 1;
 
                         if (loadedModel != null && !loadedModel.isEmpty()) {
-                            statusInfo = "Loaded: " + loadedModel + " (" + availableCount + " available)";
+                            statusInfo = "Running: " + loadedModel + " (" + availableCount + " available)";
                         } else {
-                            statusInfo = "No model loaded (" + availableCount + " available)";
+                            statusInfo = "Stopped (" + availableCount + " models available)";
                         }
                         return true;
                     }
@@ -361,7 +361,8 @@ public class LLMSettingsPanel extends JPanel {
 
         button.setEnabled(false);
         button.setText("Pulling...");
-        ollamaStatusLabel.setText("Pulling model: " + model + "...");
+        ollamaStatusLabel.setText("Pulling " + model + "...");
+        ollamaStatusLabel.setForeground(Color.ORANGE);
 
         SwingWorker<Boolean, Void> worker = new SwingWorker<>() {
             private String errorMessage;
@@ -432,7 +433,8 @@ public class LLMSettingsPanel extends JPanel {
 
         String ollamaPath = findOllamaExecutable();
         ollamaStartButton.setEnabled(false);
-        ollamaStatusLabel.setText("Starting model: " + model + "...");
+        ollamaStatusLabel.setText("Starting " + model + "...");
+        ollamaStatusLabel.setForeground(new Color(0, 150, 0));
 
         SwingWorker<Boolean, Void> worker = new SwingWorker<>() {
             private String errorMessage;
@@ -494,7 +496,8 @@ public class LLMSettingsPanel extends JPanel {
 
         String ollamaPath = findOllamaExecutable();
         ollamaStopButton.setEnabled(false);
-        ollamaStatusLabel.setText("Stopping model: " + model + "...");
+        ollamaStatusLabel.setText("Stopping " + model + "...");
+        ollamaStatusLabel.setForeground(new Color(200, 0, 0));
 
         SwingWorker<Boolean, Void> worker = new SwingWorker<>() {
             private String errorMessage;
@@ -510,6 +513,7 @@ public class LLMSettingsPanel extends JPanel {
                         errorMessage = "Stop failed with exit code: " + exitCode;
                         return false;
                     }
+                    Thread.sleep(2000);
                     return true;
                 } catch (Exception e) {
                     errorMessage = e.getMessage();

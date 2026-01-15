@@ -45,8 +45,13 @@ public class ChatPanel extends JPanel implements ConversationHistory.Conversatio
         setLayout(new BorderLayout(5, 5));
         setBorder(new EmptyBorder(10, 10, 10, 10));
 
-        // Chat display area
-        chatDisplay = new JTextPane();
+        // Chat display area - custom JTextPane that wraps text
+        chatDisplay = new JTextPane() {
+            @Override
+            public boolean getScrollableTracksViewportWidth() {
+                return true;
+            }
+        };
         chatDisplay.setEditable(false);
         chatDisplay.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 13));
         JScrollPane chatScroll = new JScrollPane(chatDisplay);
