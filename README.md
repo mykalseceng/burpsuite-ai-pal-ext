@@ -131,7 +131,11 @@ AWS Bedrock provides access to Claude models with enterprise security and compli
 
 ### Option 3: Claude Code CLI
 
-1. Install Claude Code CLI:
+1. Install Claude Code CLI (recommended):
+   ```bash
+   curl -fsSL https://claude.ai/install.sh | bash
+   ```
+   npm fallback (deprecated by Claude docs):
    ```bash
    npm install -g @anthropic-ai/claude-code
    ```
