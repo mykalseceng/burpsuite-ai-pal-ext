@@ -9,12 +9,23 @@ public class LLMSettings {
     private String ollamaBaseUrl;
     private String ollamaModel;
 
+    // Claude Code settings
+    private String claudeCodePath;
+    private String claudeCodeModel;
+
     // Bedrock settings
     private String bedrockAccessKey;
     private String bedrockSecretKey;
     private String bedrockSessionToken;
     private String bedrockRegion;
     private String bedrockModel;
+
+    // Claude Code models
+    public static final String[] CLAUDE_CODE_MODELS = {
+        "claude-sonnet-4-6",
+        "claude-opus-4-6",
+        "claude-haiku-4-5-20251001"
+    };
 
     // AWS Bedrock models - Anthropic Claude global inference profiles
     public static final String[] BEDROCK_MODELS = {
@@ -38,6 +49,8 @@ public class LLMSettings {
         this.activeProvider = LLMProvider.OLLAMA;
         this.ollamaBaseUrl = "http://localhost:11434";
         this.ollamaModel = "llama3.2";
+        this.claudeCodePath = "";
+        this.claudeCodeModel = "claude-sonnet-4-6";
         this.bedrockAccessKey = "";
         this.bedrockSecretKey = "";
         this.bedrockSessionToken = "";
@@ -68,6 +81,23 @@ public class LLMSettings {
 
     public void setOllamaModel(String ollamaModel) {
         this.ollamaModel = ollamaModel;
+    }
+
+    // Claude Code getters/setters
+    public String getClaudeCodePath() {
+        return claudeCodePath;
+    }
+
+    public void setClaudeCodePath(String claudeCodePath) {
+        this.claudeCodePath = claudeCodePath;
+    }
+
+    public String getClaudeCodeModel() {
+        return claudeCodeModel;
+    }
+
+    public void setClaudeCodeModel(String claudeCodeModel) {
+        this.claudeCodeModel = claudeCodeModel;
     }
 
     // Bedrock getters/setters
@@ -116,6 +146,7 @@ public class LLMSettings {
         return switch (provider) {
             case OLLAMA -> ollamaModel;
             case BEDROCK -> bedrockModel;
+            case CLAUDE_CODE -> claudeCodeModel;
         };
     }
 
@@ -123,6 +154,7 @@ public class LLMSettings {
         switch (provider) {
             case OLLAMA -> ollamaModel = model;
             case BEDROCK -> bedrockModel = model;
+            case CLAUDE_CODE -> claudeCodeModel = model;
         }
     }
 
@@ -130,6 +162,7 @@ public class LLMSettings {
         return switch (provider) {
             case OLLAMA -> new String[0]; // Ollama models are user-specified
             case BEDROCK -> BEDROCK_MODELS;
+            case CLAUDE_CODE -> CLAUDE_CODE_MODELS;
         };
     }
 
@@ -142,6 +175,8 @@ public class LLMSettings {
         return switch (provider) {
             case OLLAMA -> ollamaBaseUrl != null && !ollamaBaseUrl.trim().isEmpty();
             case BEDROCK -> hasBedrockCredentials();
+            case CLAUDE_CODE -> claudeCodePath != null && !claudeCodePath.trim().isEmpty()
+                    && new java.io.File(claudeCodePath.trim()).canExecute();
         };
     }
 

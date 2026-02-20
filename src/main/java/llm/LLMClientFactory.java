@@ -3,6 +3,7 @@ package llm;
 import config.LLMProvider;
 import config.SettingsManager;
 import llm.impl.BedrockClient;
+import llm.impl.ClaudeCodeClient;
 import llm.impl.OllamaClient;
 
 public class LLMClientFactory {
@@ -30,6 +31,10 @@ public class LLMClientFactory {
                     settingsManager.getBedrockSecretKey(),
                     settingsManager.getBedrockSessionToken(),
                     settingsManager.getBedrockRegion(),
+                    model
+            );
+            case CLAUDE_CODE -> new ClaudeCodeClient(
+                    settingsManager.getClaudeCodePath(),
                     model
             );
         };

@@ -5,6 +5,7 @@ import config.LLMSettings;
 import config.SettingsManager;
 import llm.LLMClientFactory;
 import llm.LLMResponse;
+import llm.impl.ClaudeCodeClient;
 import util.AwsCredentialsUtil;
 
 import javax.swing.*;
@@ -26,6 +27,10 @@ public class LLMSettingsPanel extends JPanel {
     private JLabel ollamaStatusLabel;
     private JButton ollamaStartButton;
     private JButton ollamaStopButton;
+
+    // Claude Code-specific fields
+    private JTextField claudeCodePathField;
+    private JLabel claudeCodeStatusLabel;
 
     // Bedrock-specific fields
     private JPasswordField bedrockAccessKeyField;
@@ -54,6 +59,8 @@ public class LLMSettingsPanel extends JPanel {
 
         // Provider panels
         mainPanel.add(createOllamaPanel());
+        mainPanel.add(Box.createVerticalStrut(10));
+        mainPanel.add(createClaudeCodePanel());
         mainPanel.add(Box.createVerticalStrut(10));
         mainPanel.add(createBedrockPanel());
 
@@ -541,6 +548,201 @@ public class LLMSettingsPanel extends JPanel {
         worker.execute();
     }
 
+    private JPanel createClaudeCodePanel() {
+        JPanel panel = new JPanel();
+        panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
+        panel.setBorder(BorderFactory.createTitledBorder(
+                BorderFactory.createEtchedBorder(),
+                "Claude Code (CLI)",
+                TitledBorder.LEFT,
+                TitledBorder.TOP
+        ));
+        panel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        panel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 200));
+
+        // Radio button row
+        JPanel radioRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 5));
+        JRadioButton radioButton = new JRadioButton("Use Claude Code");
+        radioButton.addActionListener(e -> {
+            if (radioButton.isSelected()) {
+                settingsManager.setActiveProvider(LLMProvider.CLAUDE_CODE);
+            }
+        });
+        providerGroup.add(radioButton);
+        providerButtons.put(LLMProvider.CLAUDE_CODE, radioButton);
+        radioRow.add(radioButton);
+        radioRow.add(new JLabel("- Run prompts via your local Claude Code CLI installation"));
+        radioRow.setAlignmentX(Component.LEFT_ALIGNMENT);
+        panel.add(radioRow);
+
+        // Path row
+        JPanel pathRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 5));
+        pathRow.add(new JLabel("Path:"));
+        claudeCodePathField = new JTextField(30);
+        claudeCodePathField.setText(settingsManager.getClaudeCodePath());
+        claudeCodePathField.getDocument().addDocumentListener(new SimpleDocumentListener(() -> {
+            settingsManager.setClaudeCodePath(claudeCodePathField.getText());
+        }));
+        pathRow.add(claudeCodePathField);
+
+        JButton detectButton = new JButton("Detect");
+        detectButton.addActionListener(e -> {
+            String detected = findClaudeExecutable();
+            if (detected != null) {
+                claudeCodePathField.setText(detected);
+                settingsManager.setClaudeCodePath(detected);
+            } else {
+                JOptionPane.showMessageDialog(this,
+                        "Claude Code CLI not found.\n\n" +
+                                "Install it with: npm install -g @anthropic-ai/claude-code",
+                        "Claude Code Not Found",
+                        JOptionPane.WARNING_MESSAGE);
+            }
+        });
+        pathRow.add(detectButton);
+        pathRow.setAlignmentX(Component.LEFT_ALIGNMENT);
+        panel.add(pathRow);
+
+        // Model row
+        JPanel modelRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 5));
+        modelRow.add(new JLabel("Model:"));
+        String[] models = LLMSettings.getModelsForProvider(LLMProvider.CLAUDE_CODE);
+        JComboBox<String> modelDropdown = new JComboBox<>(models);
+        modelDropdown.setSelectedItem(settingsManager.getModel(LLMProvider.CLAUDE_CODE));
+        modelDropdown.addActionListener(e -> {
+            String selected = (String) modelDropdown.getSelectedItem();
+            if (selected != null) {
+                settingsManager.setModel(LLMProvider.CLAUDE_CODE, selected);
+            }
+        });
+        modelRow.add(modelDropdown);
+
+        JButton testButton = new JButton("Test Connection");
+        testButton.addActionListener(e -> testClaudeCodeConnection(testButton));
+        modelRow.add(testButton);
+        modelRow.setAlignmentX(Component.LEFT_ALIGNMENT);
+        panel.add(modelRow);
+
+        // Status row
+        JPanel statusRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 0));
+        claudeCodeStatusLabel = new JLabel(" ");
+        claudeCodeStatusLabel.setFont(claudeCodeStatusLabel.getFont().deriveFont(Font.ITALIC, 11f));
+        statusRow.add(claudeCodeStatusLabel);
+        statusRow.setAlignmentX(Component.LEFT_ALIGNMENT);
+        panel.add(statusRow);
+
+        // Auto-detect path if not set
+        if (settingsManager.getClaudeCodePath() == null || settingsManager.getClaudeCodePath().trim().isEmpty()) {
+            String detected = findClaudeExecutable();
+            if (detected != null) {
+                claudeCodePathField.setText(detected);
+                settingsManager.setClaudeCodePath(detected);
+            }
+        }
+
+        return panel;
+    }
+
+    private String findClaudeExecutable() {
+        String os = System.getProperty("os.name").toLowerCase();
+        String[] possiblePaths;
+
+        if (os.contains("mac")) {
+            possiblePaths = new String[]{
+                    "/usr/local/bin/claude",
+                    "/opt/homebrew/bin/claude",
+                    System.getProperty("user.home") + "/.local/bin/claude",
+                    System.getProperty("user.home") + "/.npm-global/bin/claude",
+                    System.getProperty("user.home") + "/.nvm/current/bin/claude"
+            };
+        } else if (os.contains("win")) {
+            String appData = System.getenv("APPDATA");
+            possiblePaths = new String[]{
+                    (appData != null ? appData : "") + "\\npm\\claude.cmd",
+                    "C:\\Program Files\\nodejs\\claude.cmd",
+                    System.getProperty("user.home") + "\\AppData\\Roaming\\npm\\claude.cmd"
+            };
+        } else {
+            possiblePaths = new String[]{
+                    "/usr/local/bin/claude",
+                    "/usr/bin/claude",
+                    System.getProperty("user.home") + "/.local/bin/claude",
+                    System.getProperty("user.home") + "/.npm-global/bin/claude"
+            };
+        }
+
+        for (String path : possiblePaths) {
+            java.io.File file = new java.io.File(path);
+            if (file.exists() && file.canExecute()) {
+                return path;
+            }
+        }
+
+        return null;
+    }
+
+    private void testClaudeCodeConnection(JButton button) {
+        String path = claudeCodePathField.getText().trim();
+        if (path.isEmpty()) {
+            JOptionPane.showMessageDialog(this,
+                    "Please configure a path to the claude CLI binary.",
+                    "Configuration Required",
+                    JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        button.setEnabled(false);
+        button.setText("Testing...");
+        claudeCodeStatusLabel.setText("Checking...");
+        claudeCodeStatusLabel.setForeground(Color.GRAY);
+
+        SwingWorker<String, Void> worker = new SwingWorker<>() {
+            @Override
+            protected String doInBackground() {
+                ClaudeCodeClient client = new ClaudeCodeClient(path,
+                        settingsManager.getModel(LLMProvider.CLAUDE_CODE));
+                String version = client.getVersion();
+                if (version != null) {
+                    return version;
+                }
+                return null;
+            }
+
+            @Override
+            protected void done() {
+                button.setEnabled(true);
+                button.setText("Test Connection");
+                try {
+                    String version = get();
+                    if (version != null) {
+                        claudeCodeStatusLabel.setText("Connected - " + version);
+                        claudeCodeStatusLabel.setForeground(new Color(0, 150, 0));
+                        JOptionPane.showMessageDialog(LLMSettingsPanel.this,
+                                "Claude Code CLI detected!\n\n" + version,
+                                "Success",
+                                JOptionPane.INFORMATION_MESSAGE);
+                    } else {
+                        claudeCodeStatusLabel.setText("Not connected - claude binary not working");
+                        claudeCodeStatusLabel.setForeground(new Color(200, 0, 0));
+                        JOptionPane.showMessageDialog(LLMSettingsPanel.this,
+                                "Failed to connect to Claude Code CLI.\n\n" +
+                                        "Make sure the path is correct and claude is properly installed.",
+                                "Error",
+                                JOptionPane.ERROR_MESSAGE);
+                    }
+                } catch (Exception ex) {
+                    claudeCodeStatusLabel.setText("Error: " + ex.getMessage());
+                    claudeCodeStatusLabel.setForeground(new Color(200, 0, 0));
+                    JOptionPane.showMessageDialog(LLMSettingsPanel.this,
+                            "Connection failed:\n" + ex.getMessage(),
+                            "Error",
+                            JOptionPane.ERROR_MESSAGE);
+                }
+            }
+        };
+        worker.execute();
+    }
+
     private JPanel createBedrockPanel() {
         JPanel panel = new JPanel();
         panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
@@ -715,6 +917,7 @@ public class LLMSettingsPanel extends JPanel {
             String message = switch (provider) {
                 case OLLAMA -> "Please enter a valid Ollama base URL.";
                 case BEDROCK -> "Please configure AWS credentials (settings, environment variables, or ~/.aws/credentials via AWS_DEFAULT_PROFILE or default).";
+                case CLAUDE_CODE -> "Please configure a valid path to the claude CLI binary.";
             };
             JOptionPane.showMessageDialog(this,
                     message,
