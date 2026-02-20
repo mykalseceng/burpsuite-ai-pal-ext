@@ -6,12 +6,14 @@ AI Pal is a Burp Suite extension that integrates Large Language Models (LLMs) to
 
 ### Multi-Provider LLM Support
 
-AI Pal supports two LLM providers:
+AI Pal supports four LLM providers:
 
 - **Ollama** - Run models locally with complete privacy (Llama, Mistral, DeepSeek, and more)
 - **AWS Bedrock** - Enterprise-grade access to Claude models via AWS infrastructure
+- **Claude Code CLI** - Run prompts through your local `claude` CLI
+- **OpenAI Codex CLI** - Run prompts through your local `codex` CLI
 
-Switch between providers seamlessly in the Settings tab with automatic credential detection.
+Switch between providers in the Settings tab with automatic credential or binary-path detection.
 
 ### Context Menu Actions
 
@@ -30,7 +32,7 @@ Right-click on any request/response in Burp to access AI-powered analysis:
 A built-in chat interface for conversational security analysis:
 
 - Multi-turn conversations with conversation history
-- Streaming responses for real-time output (Ollama)
+- Streaming responses for real-time output (Ollama, Claude Code CLI, and OpenAI Codex CLI)
 - Send HTTP requests/responses directly to chat from context menu
 - Ask follow-up questions about vulnerabilities
 - Get help with payload crafting and testing strategies
@@ -127,6 +129,26 @@ AWS Bedrock provides access to Claude models with enterprise security and compli
 
 **Supported regions:** us-east-1, us-west-2, eu-west-1, eu-central-1, ap-southeast-1, ap-northeast-1
 
+### Option 3: Claude Code CLI
+
+1. Install Claude Code CLI:
+   ```bash
+   npm install -g @anthropic-ai/claude-code
+   ```
+2. In AI Pal Settings, select **Use Claude Code**
+3. Click **Detect** (or set the binary path manually)
+4. Click **Test Connection** to run `claude --version` and verify the binary executes
+
+### Option 4: OpenAI Codex CLI
+
+1. Install OpenAI Codex CLI:
+   ```bash
+   npm install -g @openai/codex
+   ```
+2. In AI Pal Settings, select **Use OpenAI Codex**
+3. Click **Detect** (or set the binary path manually)
+4. Click **Test Connection** to run `codex --version` and verify the binary executes
+
 ## Installation
 
 ### Building from Source
@@ -154,12 +176,14 @@ cd burpsuite-ai-pal-ext
 
 1. After loading the extension, open the **AI Pal** tab in Burp
 2. Navigate to the **Settings** sub-tab
-3. Select your preferred LLM provider (Ollama or AWS Bedrock)
+3. Select your preferred LLM provider (Ollama, Claude Code CLI, AWS Bedrock, or OpenAI Codex CLI)
 4. The settings panel shows your credential status:
    - For Ollama: Connection status and loaded model
    - For Bedrock: Which credential source is being used
+   - For Claude/Codex: Detected local CLI path
 5. Choose a model and region (for Bedrock)
 6. Click **Test Connection** to verify your setup
+   - For Claude/Codex this executes `<binary> --version` and requires a runnable executable
 
 ## Usage
 
@@ -213,7 +237,9 @@ src/main/java/
 │   ├── LLMResponse.java
 │   ├── impl/
 │   │   ├── OllamaClient.java
-│   │   └── BedrockClient.java
+│   │   ├── BedrockClient.java
+│   │   ├── ClaudeCodeClient.java
+│   │   └── CodexClient.java
 │   └── prompts/
 │       └── PromptTemplates.java
 ├── ui/                      # User interface components
@@ -226,6 +252,7 @@ src/main/java/
 │   └── tasks/
 └── util/                    # Utilities
     ├── AwsCredentialsUtil.java
+    ├── CliEnvironmentUtil.java
     ├── HttpRequestFormatter.java
     ├── ThreadManager.java
     └── Utf16Sanitizer.java

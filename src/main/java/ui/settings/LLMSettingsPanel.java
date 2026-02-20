@@ -6,11 +6,17 @@ import config.SettingsManager;
 import llm.LLMClientFactory;
 import llm.LLMResponse;
 import llm.impl.ClaudeCodeClient;
+import llm.impl.CodexClient;
 import util.AwsCredentialsUtil;
+import util.CliEnvironmentUtil;
 
 import javax.swing.*;
 import javax.swing.border.TitledBorder;
 import java.awt.*;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -592,19 +598,13 @@ public class LLMSettingsPanel extends JPanel {
         pathRow.add(claudeCodePathField);
 
         JButton detectButton = new JButton("Detect");
-        detectButton.addActionListener(e -> {
-            String detected = findClaudeExecutable();
-            if (detected != null) {
-                claudeCodePathField.setText(detected);
-                settingsManager.setClaudeCodePath(detected);
-            } else {
-                JOptionPane.showMessageDialog(this,
-                        "Claude Code CLI not found.\n\n" +
-                                "Install it with: npm install -g @anthropic-ai/claude-code",
-                        "Claude Code Not Found",
-                        JOptionPane.WARNING_MESSAGE);
-            }
-        });
+        detectButton.addActionListener(e -> detectCliBinary(
+                LLMProvider.CLAUDE_CODE,
+                claudeCodePathField,
+                "claude",
+                "npm install -g @anthropic-ai/claude-code",
+                "Claude Code Not Found"
+        ));
         pathRow.add(detectButton);
         pathRow.setAlignmentX(Component.LEFT_ALIGNMENT);
         panel.add(pathRow);
@@ -650,41 +650,7 @@ public class LLMSettingsPanel extends JPanel {
     }
 
     private String findClaudeExecutable() {
-        String os = System.getProperty("os.name").toLowerCase();
-        String[] possiblePaths;
-
-        if (os.contains("mac")) {
-            possiblePaths = new String[]{
-                    "/usr/local/bin/claude",
-                    "/opt/homebrew/bin/claude",
-                    System.getProperty("user.home") + "/.local/bin/claude",
-                    System.getProperty("user.home") + "/.npm-global/bin/claude",
-                    System.getProperty("user.home") + "/.nvm/current/bin/claude"
-            };
-        } else if (os.contains("win")) {
-            String appData = System.getenv("APPDATA");
-            possiblePaths = new String[]{
-                    (appData != null ? appData : "") + "\\npm\\claude.cmd",
-                    "C:\\Program Files\\nodejs\\claude.cmd",
-                    System.getProperty("user.home") + "\\AppData\\Roaming\\npm\\claude.cmd"
-            };
-        } else {
-            possiblePaths = new String[]{
-                    "/usr/local/bin/claude",
-                    "/usr/bin/claude",
-                    System.getProperty("user.home") + "/.local/bin/claude",
-                    System.getProperty("user.home") + "/.npm-global/bin/claude"
-            };
-        }
-
-        for (String path : possiblePaths) {
-            java.io.File file = new java.io.File(path);
-            if (file.exists() && file.canExecute()) {
-                return path;
-            }
-        }
-
-        return null;
+        return findCliExecutable("claude");
     }
 
     private void testClaudeCodeConnection(JButton button) {
@@ -693,6 +659,13 @@ public class LLMSettingsPanel extends JPanel {
             JOptionPane.showMessageDialog(this,
                     "Please configure a path to the claude CLI binary.",
                     "Configuration Required",
+                    JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+        if (!isExecutableFile(path)) {
+            JOptionPane.showMessageDialog(this,
+                    "The configured claude path does not exist or is not executable.",
+                    "Invalid Claude Path",
                     JOptionPane.WARNING_MESSAGE);
             return;
         }
@@ -956,18 +929,13 @@ public class LLMSettingsPanel extends JPanel {
         pathRow.add(codexPathField);
 
         JButton detectButton = new JButton("Detect");
-        detectButton.addActionListener(e -> {
-            String detected = findCodexExecutable();
-            if (detected != null) {
-                codexPathField.setText(detected);
-                settingsManager.setCodexPath(detected);
-            } else {
-                JOptionPane.showMessageDialog(this,
-                        "Codex CLI not found.\n\nInstall with: npm install -g @openai/codex",
-                        "Codex Not Found",
-                        JOptionPane.WARNING_MESSAGE);
-            }
-        });
+        detectButton.addActionListener(e -> detectCliBinary(
+                LLMProvider.CODEX,
+                codexPathField,
+                "codex",
+                "npm install -g @openai/codex",
+                "Codex Not Found"
+        ));
         pathRow.add(detectButton);
         pathRow.setAlignmentX(Component.LEFT_ALIGNMENT);
         panel.add(pathRow);
@@ -1013,57 +981,105 @@ public class LLMSettingsPanel extends JPanel {
     }
 
     private String findCodexExecutable() {
+        return findCliExecutable("codex");
+    }
+
+    private void detectCliBinary(LLMProvider provider,
+                                 JTextField pathField,
+                                 String executableName,
+                                 String installCommand,
+                                 String dialogTitle) {
+        String detected = findCliExecutable(executableName);
+        if (detected != null) {
+            pathField.setText(detected);
+            switch (provider) {
+                case CLAUDE_CODE -> settingsManager.setClaudeCodePath(detected);
+                case CODEX -> settingsManager.setCodexPath(detected);
+                default -> {
+                    return;
+                }
+            }
+            return;
+        }
+
+        JOptionPane.showMessageDialog(this,
+                provider.getDisplayName() + " CLI not found.\n\nInstall with: " + installCommand,
+                dialogTitle,
+                JOptionPane.WARNING_MESSAGE);
+    }
+
+    private String findCliExecutable(String executableName) {
         String os = System.getProperty("os.name").toLowerCase();
+        String home = System.getProperty("user.home");
         String[] possiblePaths;
 
         if (os.contains("mac")) {
             possiblePaths = new String[]{
-                    "/usr/local/bin/codex",
-                    "/opt/homebrew/bin/codex",
-                    System.getProperty("user.home") + "/.local/bin/codex",
-                    System.getProperty("user.home") + "/.npm-global/bin/codex",
-                    System.getProperty("user.home") + "/.nvm/current/bin/codex"
+                    "/usr/local/bin/" + executableName,
+                    "/opt/homebrew/bin/" + executableName,
+                    home + "/.local/bin/" + executableName,
+                    home + "/.npm-global/bin/" + executableName,
+                    home + "/.nvm/current/bin/" + executableName
             };
         } else if (os.contains("win")) {
             String appData = System.getenv("APPDATA");
             possiblePaths = new String[]{
-                    (appData != null ? appData : "") + "\\npm\\codex.cmd",
-                    "C:\\Program Files\\nodejs\\codex.cmd",
-                    System.getProperty("user.home") + "\\AppData\\Roaming\\npm\\codex.cmd"
+                    (appData != null ? appData : "") + "\\npm\\" + executableName + ".cmd",
+                    "C:\\Program Files\\nodejs\\" + executableName + ".cmd",
+                    home + "\\AppData\\Roaming\\npm\\" + executableName + ".cmd"
             };
         } else {
             possiblePaths = new String[]{
-                    "/usr/local/bin/codex",
-                    "/usr/bin/codex",
-                    System.getProperty("user.home") + "/.local/bin/codex",
-                    System.getProperty("user.home") + "/.npm-global/bin/codex"
+                    "/usr/local/bin/" + executableName,
+                    "/usr/bin/" + executableName,
+                    home + "/.local/bin/" + executableName,
+                    home + "/.npm-global/bin/" + executableName
             };
         }
 
         for (String path : possiblePaths) {
-            java.io.File file = new java.io.File(path);
-            if (file.exists() && file.canExecute()) {
+            if (isExecutableFile(path)) {
                 return path;
             }
         }
 
-        // Try `which codex` / `where codex` as fallback
+        return findExecutableOnPath(executableName, os);
+    }
+
+    private String findExecutableOnPath(String executableName, String os) {
         try {
-            String whichCmd = os.contains("win") ? "where" : "which";
-            ProcessBuilder pb = new ProcessBuilder(whichCmd, "codex");
+            String lookupCmd = os.contains("win") ? "where" : "which";
+            ProcessBuilder pb = new ProcessBuilder(lookupCmd, executableName);
             pb.redirectErrorStream(true);
+            CliEnvironmentUtil.ensureNodePath(pb);
+
             Process process = pb.start();
-            java.io.BufferedReader reader = new java.io.BufferedReader(
-                    new java.io.InputStreamReader(process.getInputStream()));
-            String line = reader.readLine();
-            process.waitFor();
-            if (line != null && !line.trim().isEmpty() && new java.io.File(line.trim()).exists()) {
-                return line.trim();
+            try (BufferedReader reader = new BufferedReader(
+                    new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    String candidate = line.trim();
+                    if (candidate.startsWith("\"") && candidate.endsWith("\"") && candidate.length() > 1) {
+                        candidate = candidate.substring(1, candidate.length() - 1);
+                    }
+                    if (isExecutableFile(candidate)) {
+                        return candidate;
+                    }
+                }
             }
+            process.waitFor();
         } catch (Exception ignored) {
         }
 
         return null;
+    }
+
+    private boolean isExecutableFile(String path) {
+        if (path == null || path.trim().isEmpty()) {
+            return false;
+        }
+        File file = new File(path.trim());
+        return file.exists() && file.canExecute();
     }
 
     private void testCodexConnection(JButton button) {
@@ -1072,6 +1088,13 @@ public class LLMSettingsPanel extends JPanel {
             JOptionPane.showMessageDialog(this,
                     "Please configure a path to the codex CLI binary.",
                     "Configuration Required",
+                    JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+        if (!isExecutableFile(path)) {
+            JOptionPane.showMessageDialog(this,
+                    "The configured codex path does not exist or is not executable.",
+                    "Invalid Codex Path",
                     JOptionPane.WARNING_MESSAGE);
             return;
         }
@@ -1084,7 +1107,7 @@ public class LLMSettingsPanel extends JPanel {
         SwingWorker<String, Void> worker = new SwingWorker<>() {
             @Override
             protected String doInBackground() {
-                llm.impl.CodexClient client = new llm.impl.CodexClient(path,
+                CodexClient client = new CodexClient(path,
                         settingsManager.getModel(LLMProvider.CODEX));
                 return client.getVersion();
             }
@@ -1114,6 +1137,10 @@ public class LLMSettingsPanel extends JPanel {
                 } catch (Exception ex) {
                     codexStatusLabel.setText("Error: " + ex.getMessage());
                     codexStatusLabel.setForeground(new Color(200, 0, 0));
+                    JOptionPane.showMessageDialog(LLMSettingsPanel.this,
+                            "Connection failed:\n" + ex.getMessage(),
+                            "Error",
+                            JOptionPane.ERROR_MESSAGE);
                 }
             }
         };

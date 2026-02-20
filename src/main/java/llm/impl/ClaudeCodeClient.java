@@ -16,6 +16,7 @@ import java.util.concurrent.TimeUnit;
 import llm.LLMClient;
 import llm.LLMResponse;
 import ui.chat.ChatMessage;
+import util.CliEnvironmentUtil;
 import util.Utf16Sanitizer;
 
 public class ClaudeCodeClient implements LLMClient {
@@ -66,6 +67,7 @@ public class ClaudeCodeClient implements LLMClient {
             ProcessBuilder pb = new ProcessBuilder(command);
             pb.redirectErrorStream(false);
             pb.directory(new java.io.File(System.getProperty("user.home")));
+            CliEnvironmentUtil.ensureNodePath(pb);
 
             process = pb.start();
             final Process proc = process;
@@ -197,6 +199,7 @@ public class ClaudeCodeClient implements LLMClient {
             ProcessBuilder pb = new ProcessBuilder(command);
             pb.redirectErrorStream(true);
             pb.directory(new java.io.File(System.getProperty("user.home")));
+            CliEnvironmentUtil.ensureNodePath(pb);
 
             Process process = pb.start();
             boolean exited = process.waitFor(10, TimeUnit.SECONDS);
@@ -233,6 +236,7 @@ public class ClaudeCodeClient implements LLMClient {
             ProcessBuilder pb = new ProcessBuilder(command);
             pb.redirectErrorStream(true);
             pb.directory(new java.io.File(System.getProperty("user.home")));
+            CliEnvironmentUtil.ensureNodePath(pb);
 
             Process process = pb.start();
             String output = readStream(process.getInputStream()).trim();
@@ -253,6 +257,7 @@ public class ClaudeCodeClient implements LLMClient {
         ProcessBuilder pb = new ProcessBuilder(command);
         pb.redirectErrorStream(false);
         pb.directory(new java.io.File(System.getProperty("user.home")));
+        CliEnvironmentUtil.ensureNodePath(pb);
 
         Process process = pb.start();
 

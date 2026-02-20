@@ -66,6 +66,7 @@ public class ChatPanel extends JPanel implements ConversationHistory.Conversatio
         inputArea.setLineWrap(true);
         inputArea.setWrapStyleWord(true);
         inputArea.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 13));
+        inputArea.setBorder(BorderFactory.createEmptyBorder(6, 8, 6, 8));
         inputArea.addKeyListener(new KeyAdapter() {
             @Override
             public void keyPressed(KeyEvent e) {
@@ -78,6 +79,10 @@ public class ChatPanel extends JPanel implements ConversationHistory.Conversatio
             }
         });
         JScrollPane inputScroll = new JScrollPane(inputArea);
+        inputScroll.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new Color(130, 130, 130), 1),
+                BorderFactory.createEmptyBorder(1, 1, 1, 1)
+        ));
         inputPanel.add(inputScroll, BorderLayout.CENTER);
 
         // Button panel - use GridLayout for vertical stacking

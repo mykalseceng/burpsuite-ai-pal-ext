@@ -18,6 +18,7 @@ import java.util.concurrent.TimeUnit;
 import llm.LLMClient;
 import llm.LLMResponse;
 import ui.chat.ChatMessage;
+import util.CliEnvironmentUtil;
 import util.Utf16Sanitizer;
 
 public class CodexClient implements LLMClient {
@@ -29,31 +30,6 @@ public class CodexClient implements LLMClient {
     public CodexClient(String codexPath, String model) {
         this.codexPath = codexPath;
         this.model = model;
-    }
-
-    /**
-     * Ensure PATH includes common Node.js locations so that
-     * {@code #!/usr/bin/env node} shebangs resolve correctly.
-     * Burp launched from Finder on macOS has a minimal PATH.
-     */
-    private void ensurePath(ProcessBuilder pb) {
-        Map<String, String> env = pb.environment();
-        String currentPath = env.getOrDefault("PATH", "");
-        String home = System.getProperty("user.home");
-        String[] extras = {
-            "/usr/local/bin",
-            "/opt/homebrew/bin",
-            home + "/.nvm/current/bin",
-            home + "/.local/bin"
-        };
-        StringBuilder newPath = new StringBuilder(currentPath);
-        for (String dir : extras) {
-            if (!currentPath.contains(dir)) {
-                if (newPath.length() > 0) newPath.append(":");
-                newPath.append(dir);
-            }
-        }
-        env.put("PATH", newPath.toString());
     }
 
     @Override
@@ -171,7 +147,7 @@ public class CodexClient implements LLMClient {
             ProcessBuilder pb = new ProcessBuilder(command);
             pb.redirectErrorStream(true);
             pb.directory(new java.io.File(System.getProperty("user.home")));
-            ensurePath(pb);
+            CliEnvironmentUtil.ensureNodePath(pb);
 
             Process process = pb.start();
             boolean exited = process.waitFor(10, TimeUnit.SECONDS);
@@ -208,7 +184,7 @@ public class CodexClient implements LLMClient {
             ProcessBuilder pb = new ProcessBuilder(command);
             pb.redirectErrorStream(true);
             pb.directory(new java.io.File(System.getProperty("user.home")));
-            ensurePath(pb);
+            CliEnvironmentUtil.ensureNodePath(pb);
 
             Process process = pb.start();
             String output = readStream(process.getInputStream()).trim();
@@ -313,7 +289,7 @@ public class CodexClient implements LLMClient {
         ProcessBuilder pb = new ProcessBuilder(command);
         pb.redirectErrorStream(false);
         pb.directory(new java.io.File(System.getProperty("user.home")));
-        ensurePath(pb);
+        CliEnvironmentUtil.ensureNodePath(pb);
 
         return pb.start();
     }
