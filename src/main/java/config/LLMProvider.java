@@ -2,7 +2,8 @@ package config;
 
 public enum LLMProvider {
     OLLAMA("Ollama", "localhost:11434"),
-    BEDROCK("AWS Bedrock", "bedrock-runtime.us-east-1.amazonaws.com");
+    BEDROCK("AWS Bedrock", "bedrock-runtime.us-east-1.amazonaws.com"),
+    CODEX("OpenAI Codex", "localhost");
 
     private final String displayName;
     private final String apiHost;

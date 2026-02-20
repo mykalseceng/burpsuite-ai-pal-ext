@@ -16,12 +16,25 @@ public class LLMSettings {
     private String bedrockRegion;
     private String bedrockModel;
 
+    // Codex settings
+    private String codexPath;
+    private String codexModel;
+
     // AWS Bedrock models - Anthropic Claude global inference profiles
     public static final String[] BEDROCK_MODELS = {
         "global.anthropic.claude-sonnet-4-5-20250929-v1:0",
         "global.anthropic.claude-sonnet-4-20250514-v1:0",
         "global.anthropic.claude-haiku-4-5-20251001-v1:0",
         "global.anthropic.claude-opus-4-5-20251101-v1:0"
+    };
+
+    // OpenAI Codex CLI models
+    public static final String[] CODEX_MODELS = {
+        "gpt-5.3-codex",
+        "gpt-5.2-codex",
+        "gpt-5.2",
+        "gpt-5.1-codex-max",
+        "gpt-5-codex-mini"
     };
 
     // AWS Bedrock regions that support Bedrock
@@ -43,6 +56,8 @@ public class LLMSettings {
         this.bedrockSessionToken = "";
         this.bedrockRegion = "us-east-1";
         this.bedrockModel = "global.anthropic.claude-sonnet-4-5-20250929-v1:0";
+        this.codexPath = "";
+        this.codexModel = "gpt-5.3-codex";
     }
 
     public LLMProvider getActiveProvider() {
@@ -111,11 +126,29 @@ public class LLMSettings {
         this.bedrockModel = bedrockModel;
     }
 
+    // Codex getters/setters
+    public String getCodexPath() {
+        return codexPath;
+    }
+
+    public void setCodexPath(String codexPath) {
+        this.codexPath = codexPath;
+    }
+
+    public String getCodexModel() {
+        return codexModel;
+    }
+
+    public void setCodexModel(String codexModel) {
+        this.codexModel = codexModel;
+    }
+
     // Generic accessors for provider abstraction
     public String getModel(LLMProvider provider) {
         return switch (provider) {
             case OLLAMA -> ollamaModel;
             case BEDROCK -> bedrockModel;
+            case CODEX -> codexModel;
         };
     }
 
@@ -123,6 +156,7 @@ public class LLMSettings {
         switch (provider) {
             case OLLAMA -> ollamaModel = model;
             case BEDROCK -> bedrockModel = model;
+            case CODEX -> codexModel = model;
         }
     }
 
@@ -130,6 +164,7 @@ public class LLMSettings {
         return switch (provider) {
             case OLLAMA -> new String[0]; // Ollama models are user-specified
             case BEDROCK -> BEDROCK_MODELS;
+            case CODEX -> CODEX_MODELS;
         };
     }
 
@@ -142,6 +177,8 @@ public class LLMSettings {
         return switch (provider) {
             case OLLAMA -> ollamaBaseUrl != null && !ollamaBaseUrl.trim().isEmpty();
             case BEDROCK -> hasBedrockCredentials();
+            case CODEX -> codexPath != null && !codexPath.trim().isEmpty()
+                    && new java.io.File(codexPath.trim()).canExecute();
         };
     }
 
