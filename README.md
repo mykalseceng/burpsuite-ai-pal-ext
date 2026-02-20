@@ -131,6 +131,8 @@ AWS Bedrock provides access to Claude models with enterprise security and compli
 
 ### Option 3: Claude Code CLI
 
+AI Pal uses a local CLI integration for Claude Code. Users are responsible for complying with Anthropic's applicable terms and policies for their account and usage.
+
 1. Install Claude Code CLI (recommended):
    ```bash
    curl -fsSL https://claude.ai/install.sh | bash
@@ -144,6 +146,8 @@ AWS Bedrock provides access to Claude models with enterprise security and compli
 4. Click **Test Connection** to run `claude --version` and verify the binary executes
 
 ### Option 4: OpenAI Codex CLI
+
+AI Pal uses a local CLI integration for Codex. Users are responsible for complying with OpenAI's applicable terms and policies for their account and usage.
 
 1. Install OpenAI Codex CLI:
    ```bash
