@@ -5,6 +5,8 @@ import javax.swing.border.EmptyBorder;
 import java.awt.*;
 import java.awt.datatransfer.StringSelection;
 
+import ui.UIStyle;
+
 public class AnalysisResultDialog extends JDialog {
     private final JTextArea resultArea;
 
@@ -35,11 +37,15 @@ public class AnalysisResultDialog extends JDialog {
         resultArea.setMargin(new Insets(15, 15, 15, 15));
 
         JScrollPane scrollPane = new JScrollPane(resultArea);
-        scrollPane.setBorder(BorderFactory.createCompoundBorder(
+        scrollPane.setBorder(UIStyle.createFieldBorder());
+
+        JPanel resultPanel = new JPanel(new BorderLayout());
+        resultPanel.setBorder(BorderFactory.createCompoundBorder(
                 new EmptyBorder(10, 10, 5, 10),
-                BorderFactory.createLineBorder(new Color(200, 200, 200))
+                UIStyle.createSectionBorder("Analysis output")
         ));
-        add(scrollPane, BorderLayout.CENTER);
+        resultPanel.add(scrollPane, BorderLayout.CENTER);
+        add(resultPanel, BorderLayout.CENTER);
 
         // Button panel with better styling
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 10));

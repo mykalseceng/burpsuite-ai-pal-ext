@@ -21,6 +21,8 @@ import javax.swing.ListSelectionModel;
 import javax.swing.SwingUtilities;
 import javax.swing.border.EmptyBorder;
 
+import ui.UIStyle;
+
 public class AITasksTab extends JPanel implements AITaskManager.Listener {
     private final AITaskManager taskManager;
 
@@ -81,14 +83,12 @@ public class AITasksTab extends JPanel implements AITaskManager.Listener {
 
     private Component buildLeft() {
         JPanel left = new JPanel(new BorderLayout(8, 8));
-
-        JLabel title = new JLabel("Tasks");
-        title.setFont(title.getFont().deriveFont(Font.BOLD));
-        left.add(title, BorderLayout.NORTH);
+        left.setBorder(UIStyle.createSectionBorder("Tasks"));
 
         taskList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         taskList.setCellRenderer(new TaskCellRenderer());
         JScrollPane scroll = new JScrollPane(taskList);
+        scroll.setBorder(UIStyle.createFieldBorder());
         left.add(scroll, BorderLayout.CENTER);
 
         return left;
@@ -97,15 +97,11 @@ public class AITasksTab extends JPanel implements AITaskManager.Listener {
     private Component buildRight() {
         JPanel right = new JPanel();
         right.setLayout(new BorderLayout(8, 8));
-
-        JPanel header = new JPanel(new BorderLayout());
-        JLabel title = new JLabel("Task details");
-        title.setFont(title.getFont().deriveFont(Font.BOLD));
-        header.add(title, BorderLayout.WEST);
-        right.add(header, BorderLayout.NORTH);
+        right.setBorder(UIStyle.createSectionBorder("Task details"));
 
         JPanel content = new JPanel();
         content.setLayout(new BoxLayout(content, BoxLayout.Y_AXIS));
+        content.setBorder(new EmptyBorder(6, 6, 6, 6));
 
         content.add(section("Task summary", summaryArea, 5));
         content.add(Box.createVerticalStrut(8));
@@ -116,6 +112,7 @@ public class AITasksTab extends JPanel implements AITaskManager.Listener {
         content.add(section("Request / Response / Notes", reqResArea, 10));
 
         JScrollPane scroll = new JScrollPane(content);
+        scroll.setBorder(UIStyle.createFieldBorder());
         right.add(scroll, BorderLayout.CENTER);
 
         configureTextArea(summaryArea);
@@ -179,15 +176,16 @@ public class AITasksTab extends JPanel implements AITaskManager.Listener {
         area.setLineWrap(true);
         area.setWrapStyleWord(true);
         area.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 13));
+        UIStyle.applyTextInputPadding(area);
     }
 
     private static JComponent section(String label, JTextArea area, int rows) {
         JPanel p = new JPanel(new BorderLayout(4, 4));
-        JLabel l = new JLabel(label);
-        l.setFont(l.getFont().deriveFont(Font.BOLD));
-        p.add(l, BorderLayout.NORTH);
+        p.setBorder(UIStyle.createSectionBorder(label));
         area.setRows(rows);
-        p.add(new JScrollPane(area), BorderLayout.CENTER);
+        JScrollPane areaScroll = new JScrollPane(area);
+        areaScroll.setBorder(UIStyle.createFieldBorder());
+        p.add(areaScroll, BorderLayout.CENTER);
         return p;
     }
 

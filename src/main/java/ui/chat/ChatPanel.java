@@ -5,6 +5,7 @@ import llm.LLMClient;
 import llm.LLMClientFactory;
 import llm.LLMResponse;
 import llm.prompts.PromptTemplates;
+import ui.UIStyle;
 import util.ThreadManager;
 
 import javax.swing.*;
@@ -56,17 +57,22 @@ public class ChatPanel extends JPanel implements ConversationHistory.Conversatio
         chatDisplay.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 13));
         JScrollPane chatScroll = new JScrollPane(chatDisplay);
         chatScroll.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_ALWAYS);
-        add(chatScroll, BorderLayout.CENTER);
+        chatScroll.setBorder(UIStyle.createFieldBorder());
+        JPanel chatSection = new JPanel(new BorderLayout());
+        chatSection.setBorder(UIStyle.createSectionBorder("Conversation"));
+        chatSection.add(chatScroll, BorderLayout.CENTER);
+        add(chatSection, BorderLayout.CENTER);
 
         // Input panel
         JPanel inputPanel = new JPanel(new BorderLayout(5, 5));
+        inputPanel.setBorder(UIStyle.createSectionBorder("Message input"));
 
         // Input area
         inputArea = new JTextArea(3, 40);
         inputArea.setLineWrap(true);
         inputArea.setWrapStyleWord(true);
         inputArea.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 13));
-        inputArea.setBorder(BorderFactory.createEmptyBorder(6, 8, 6, 8));
+        UIStyle.applyTextInputPadding(inputArea);
         inputArea.addKeyListener(new KeyAdapter() {
             @Override
             public void keyPressed(KeyEvent e) {
@@ -79,10 +85,7 @@ public class ChatPanel extends JPanel implements ConversationHistory.Conversatio
             }
         });
         JScrollPane inputScroll = new JScrollPane(inputArea);
-        inputScroll.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(new Color(130, 130, 130), 1),
-                BorderFactory.createEmptyBorder(1, 1, 1, 1)
-        ));
+        inputScroll.setBorder(UIStyle.createFieldBorder());
         inputPanel.add(inputScroll, BorderLayout.CENTER);
 
         // Button panel - use GridLayout for vertical stacking

@@ -7,11 +7,11 @@ import llm.LLMClientFactory;
 import llm.LLMResponse;
 import llm.impl.ClaudeCodeClient;
 import llm.impl.CodexClient;
+import ui.UIStyle;
 import util.AwsCredentialsUtil;
 import util.CliEnvironmentUtil;
 
 import javax.swing.*;
-import javax.swing.border.TitledBorder;
 import java.awt.*;
 import java.io.BufferedReader;
 import java.io.File;
@@ -182,12 +182,7 @@ public class LLMSettingsPanel extends JPanel {
     private JPanel createOllamaPanel() {
         JPanel panel = new JPanel();
         panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
-        panel.setBorder(BorderFactory.createTitledBorder(
-                BorderFactory.createEtchedBorder(),
-                "Ollama (Local)",
-                TitledBorder.LEFT,
-                TitledBorder.TOP
-        ));
+        panel.setBorder(UIStyle.createSectionBorder("Ollama (Local)"));
         panel.setAlignmentX(Component.LEFT_ALIGNMENT);
         panel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 220));
 
@@ -563,12 +558,7 @@ public class LLMSettingsPanel extends JPanel {
     private JPanel createClaudeCodePanel() {
         JPanel panel = new JPanel();
         panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
-        panel.setBorder(BorderFactory.createTitledBorder(
-                BorderFactory.createEtchedBorder(),
-                "Claude Code (CLI)",
-                TitledBorder.LEFT,
-                TitledBorder.TOP
-        ));
+        panel.setBorder(UIStyle.createSectionBorder("Claude Code (CLI)"));
         panel.setAlignmentX(Component.LEFT_ALIGNMENT);
         panel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 200));
 
@@ -725,12 +715,7 @@ public class LLMSettingsPanel extends JPanel {
     private JPanel createBedrockPanel() {
         JPanel panel = new JPanel();
         panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
-        panel.setBorder(BorderFactory.createTitledBorder(
-                BorderFactory.createEtchedBorder(),
-                "AWS Bedrock",
-                TitledBorder.LEFT,
-                TitledBorder.TOP
-        ));
+        panel.setBorder(UIStyle.createSectionBorder("AWS Bedrock"));
         panel.setAlignmentX(Component.LEFT_ALIGNMENT);
         panel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 380));
 
@@ -800,11 +785,8 @@ public class LLMSettingsPanel extends JPanel {
         // Collapsible credentials panel
         bedrockCredentialsPanel = new JPanel();
         bedrockCredentialsPanel.setLayout(new BoxLayout(bedrockCredentialsPanel, BoxLayout.Y_AXIS));
-        bedrockCredentialsPanel.setBorder(BorderFactory.createTitledBorder(
-                BorderFactory.createEtchedBorder(),
-                "Manual Credentials (Optional - only needed if not using env vars or ~/.aws/credentials)",
-                TitledBorder.LEFT,
-                TitledBorder.TOP
+        bedrockCredentialsPanel.setBorder(UIStyle.createSectionBorder(
+                "Manual Credentials (Optional - only needed if not using env vars or ~/.aws/credentials)"
         ));
         bedrockCredentialsPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
 
@@ -894,12 +876,7 @@ public class LLMSettingsPanel extends JPanel {
     private JPanel createCodexPanel() {
         JPanel panel = new JPanel();
         panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
-        panel.setBorder(BorderFactory.createTitledBorder(
-                BorderFactory.createEtchedBorder(),
-                "OpenAI Codex",
-                TitledBorder.LEFT,
-                TitledBorder.TOP
-        ));
+        panel.setBorder(UIStyle.createSectionBorder("OpenAI Codex"));
         panel.setAlignmentX(Component.LEFT_ALIGNMENT);
         panel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 220));
 

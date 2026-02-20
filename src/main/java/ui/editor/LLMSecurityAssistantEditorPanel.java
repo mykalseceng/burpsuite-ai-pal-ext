@@ -24,6 +24,7 @@ import llm.LLMClient;
 import llm.LLMClientFactory;
 import llm.LLMResponse;
 import llm.prompts.PromptTemplates;
+import ui.UIStyle;
 import ui.tasks.AITask;
 import ui.tasks.AITaskManager;
 import util.HttpRequestFormatter;
@@ -77,13 +78,20 @@ public class LLMSecurityAssistantEditorPanel extends JPanel {
     private Component buildTop() {
         JPanel top = new JPanel(new BorderLayout(8, 8));
 
+        JPanel promptPanel = new JPanel(new BorderLayout(4, 4));
+        promptPanel.setBorder(UIStyle.createSectionBorder("Prompt"));
+
         promptArea.setLineWrap(true);
         promptArea.setWrapStyleWord(true);
         promptArea.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 13));
+        UIStyle.applyTextInputPadding(promptArea);
         JScrollPane promptScroll = new JScrollPane(promptArea);
-        top.add(promptScroll, BorderLayout.CENTER);
+        promptScroll.setBorder(UIStyle.createFieldBorder());
+        promptPanel.add(promptScroll, BorderLayout.CENTER);
+        top.add(promptPanel, BorderLayout.CENTER);
 
         JPanel right = new JPanel(new BorderLayout(6, 6));
+        right.setBorder(UIStyle.createSectionBorder("Analyze"));
 
         sendButton.setToolTipText("Run analysis (results appear in Tasks tab)");
         sendButton.addActionListener(e -> send());
@@ -101,14 +109,15 @@ public class LLMSecurityAssistantEditorPanel extends JPanel {
 
     private Component buildNotes() {
         JPanel notesPanel = new JPanel(new BorderLayout(4, 4));
-        JLabel l = new JLabel("Notes (optional)");
-        l.setFont(l.getFont().deriveFont(Font.BOLD));
-        notesPanel.add(l, BorderLayout.NORTH);
+        notesPanel.setBorder(UIStyle.createSectionBorder("Notes (optional)"));
 
         notesArea.setLineWrap(true);
         notesArea.setWrapStyleWord(true);
         notesArea.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 12));
-        notesPanel.add(new JScrollPane(notesArea), BorderLayout.CENTER);
+        UIStyle.applyTextInputPadding(notesArea);
+        JScrollPane notesScroll = new JScrollPane(notesArea);
+        notesScroll.setBorder(UIStyle.createFieldBorder());
+        notesPanel.add(notesScroll, BorderLayout.CENTER);
         return notesPanel;
     }
 

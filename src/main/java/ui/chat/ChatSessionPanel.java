@@ -16,6 +16,7 @@ import javax.swing.JSplitPane;
 
 import config.SettingsManager;
 import llm.LLMClientFactory;
+import ui.UIStyle;
 import util.HttpRequestFormatter;
 import util.ThreadManager;
 
@@ -82,8 +83,15 @@ public class ChatSessionPanel extends JPanel {
         JSplitPane split = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT);
         split.setResizeWeight(0.5);
 
-        split.setLeftComponent(requestEditor.uiComponent());
-        split.setRightComponent(responseEditor.uiComponent());
+        split.setLeftComponent(wrapSection("Request", requestEditor.uiComponent()));
+        split.setRightComponent(wrapSection("Response", responseEditor.uiComponent()));
         return split;
+    }
+
+    private static JPanel wrapSection(String title, Component content) {
+        JPanel section = new JPanel(new BorderLayout());
+        section.setBorder(UIStyle.createSectionBorder(title));
+        section.add(content, BorderLayout.CENTER);
+        return section;
     }
 }
