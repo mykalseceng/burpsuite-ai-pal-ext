@@ -20,6 +20,10 @@ public class SettingsManager {
     private static final String KEY_BEDROCK_REGION = "llm.bedrock.region";
     private static final String KEY_BEDROCK_MODEL = "llm.bedrock.model";
 
+    // Codex settings keys
+    private static final String KEY_CODEX_PATH = "llm.codex.path";
+    private static final String KEY_CODEX_MODEL = "llm.codex.model";
+
     private final Preferences preferences;
     private LLMSettings settings;
 
@@ -71,6 +75,13 @@ public class SettingsManager {
         String bedrockModel = preferences.getString(KEY_BEDROCK_MODEL);
         if (bedrockModel != null) s.setBedrockModel(bedrockModel);
 
+        // Load Codex settings
+        String codexPath = preferences.getString(KEY_CODEX_PATH);
+        if (codexPath != null) s.setCodexPath(codexPath);
+
+        String codexModel = preferences.getString(KEY_CODEX_MODEL);
+        if (codexModel != null) s.setCodexModel(codexModel);
+
         return s;
     }
 
@@ -93,6 +104,10 @@ public class SettingsManager {
         preferences.setString(KEY_BEDROCK_SESSION_TOKEN, settings.getBedrockSessionToken());
         preferences.setString(KEY_BEDROCK_REGION, settings.getBedrockRegion());
         preferences.setString(KEY_BEDROCK_MODEL, settings.getBedrockModel());
+
+        // Save Codex settings
+        preferences.setString(KEY_CODEX_PATH, settings.getCodexPath());
+        preferences.setString(KEY_CODEX_MODEL, settings.getCodexModel());
     }
 
     public LLMSettings getSettings() {
@@ -175,6 +190,16 @@ public class SettingsManager {
 
     public void setBedrockRegion(String region) {
         settings.setBedrockRegion(region);
+        saveSettings();
+    }
+
+    // Codex-specific accessors
+    public String getCodexPath() {
+        return settings.getCodexPath();
+    }
+
+    public void setCodexPath(String path) {
+        settings.setCodexPath(path);
         saveSettings();
     }
 

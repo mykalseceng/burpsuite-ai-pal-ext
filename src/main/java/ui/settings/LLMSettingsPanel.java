@@ -40,6 +40,10 @@ public class LLMSettingsPanel extends JPanel {
     private JLabel bedrockStatusLabel;
     private JPanel bedrockCredentialsPanel;
 
+    // Codex-specific fields
+    private JTextField codexPathField;
+    private JLabel codexStatusLabel;
+
     public LLMSettingsPanel(SettingsManager settingsManager, LLMClientFactory clientFactory) {
         this.settingsManager = settingsManager;
         this.clientFactory = clientFactory;
@@ -63,6 +67,8 @@ public class LLMSettingsPanel extends JPanel {
         mainPanel.add(createClaudeCodePanel());
         mainPanel.add(Box.createVerticalStrut(10));
         mainPanel.add(createBedrockPanel());
+        mainPanel.add(Box.createVerticalStrut(10));
+        mainPanel.add(createCodexPanel());
 
         // Set initial selection
         LLMProvider activeProvider = settingsManager.getActiveProvider();
@@ -912,12 +918,215 @@ public class LLMSettingsPanel extends JPanel {
         bedrockStatusLabel.setForeground(new Color(200, 0, 0));
     }
 
+    private JPanel createCodexPanel() {
+        JPanel panel = new JPanel();
+        panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
+        panel.setBorder(BorderFactory.createTitledBorder(
+                BorderFactory.createEtchedBorder(),
+                "OpenAI Codex",
+                TitledBorder.LEFT,
+                TitledBorder.TOP
+        ));
+        panel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        panel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 220));
+
+        // Radio button row
+        JPanel radioRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 5));
+        JRadioButton radioButton = new JRadioButton("Use OpenAI Codex");
+        radioButton.addActionListener(e -> {
+            if (radioButton.isSelected()) {
+                settingsManager.setActiveProvider(LLMProvider.CODEX);
+            }
+        });
+        providerGroup.add(radioButton);
+        providerButtons.put(LLMProvider.CODEX, radioButton);
+        radioRow.add(radioButton);
+        radioRow.add(new JLabel("- Run prompts via your local Codex CLI installation"));
+        radioRow.setAlignmentX(Component.LEFT_ALIGNMENT);
+        panel.add(radioRow);
+
+        // Path row
+        JPanel pathRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 5));
+        pathRow.add(new JLabel("Path:"));
+        codexPathField = new JTextField(30);
+        codexPathField.setText(settingsManager.getCodexPath());
+        codexPathField.getDocument().addDocumentListener(new SimpleDocumentListener(() -> {
+            settingsManager.setCodexPath(codexPathField.getText());
+        }));
+        pathRow.add(codexPathField);
+
+        JButton detectButton = new JButton("Detect");
+        detectButton.addActionListener(e -> {
+            String detected = findCodexExecutable();
+            if (detected != null) {
+                codexPathField.setText(detected);
+                settingsManager.setCodexPath(detected);
+            } else {
+                JOptionPane.showMessageDialog(this,
+                        "Codex CLI not found.\n\nInstall with: npm install -g @openai/codex",
+                        "Codex Not Found",
+                        JOptionPane.WARNING_MESSAGE);
+            }
+        });
+        pathRow.add(detectButton);
+        pathRow.setAlignmentX(Component.LEFT_ALIGNMENT);
+        panel.add(pathRow);
+
+        // Model row
+        JPanel modelRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 5));
+        modelRow.add(new JLabel("Model:"));
+        String[] models = LLMSettings.getModelsForProvider(LLMProvider.CODEX);
+        JComboBox<String> modelDropdown = new JComboBox<>(models);
+        modelDropdown.setSelectedItem(settingsManager.getModel(LLMProvider.CODEX));
+        modelDropdown.addActionListener(e -> {
+            String selected = (String) modelDropdown.getSelectedItem();
+            if (selected != null) {
+                settingsManager.setModel(LLMProvider.CODEX, selected);
+            }
+        });
+        modelRow.add(modelDropdown);
+
+        JButton testButton = new JButton("Test Connection");
+        testButton.addActionListener(e -> testCodexConnection(testButton));
+        modelRow.add(testButton);
+        modelRow.setAlignmentX(Component.LEFT_ALIGNMENT);
+        panel.add(modelRow);
+
+        // Status row
+        JPanel statusRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 0));
+        codexStatusLabel = new JLabel(" ");
+        codexStatusLabel.setFont(codexStatusLabel.getFont().deriveFont(Font.ITALIC, 11f));
+        statusRow.add(codexStatusLabel);
+        statusRow.setAlignmentX(Component.LEFT_ALIGNMENT);
+        panel.add(statusRow);
+
+        // Auto-detect path on load if empty
+        if (settingsManager.getCodexPath() == null || settingsManager.getCodexPath().trim().isEmpty()) {
+            String detected = findCodexExecutable();
+            if (detected != null) {
+                codexPathField.setText(detected);
+                settingsManager.setCodexPath(detected);
+            }
+        }
+
+        return panel;
+    }
+
+    private String findCodexExecutable() {
+        String os = System.getProperty("os.name").toLowerCase();
+        String[] possiblePaths;
+
+        if (os.contains("mac")) {
+            possiblePaths = new String[]{
+                    "/usr/local/bin/codex",
+                    "/opt/homebrew/bin/codex",
+                    System.getProperty("user.home") + "/.local/bin/codex",
+                    System.getProperty("user.home") + "/.npm-global/bin/codex",
+                    System.getProperty("user.home") + "/.nvm/current/bin/codex"
+            };
+        } else if (os.contains("win")) {
+            String appData = System.getenv("APPDATA");
+            possiblePaths = new String[]{
+                    (appData != null ? appData : "") + "\\npm\\codex.cmd",
+                    "C:\\Program Files\\nodejs\\codex.cmd",
+                    System.getProperty("user.home") + "\\AppData\\Roaming\\npm\\codex.cmd"
+            };
+        } else {
+            possiblePaths = new String[]{
+                    "/usr/local/bin/codex",
+                    "/usr/bin/codex",
+                    System.getProperty("user.home") + "/.local/bin/codex",
+                    System.getProperty("user.home") + "/.npm-global/bin/codex"
+            };
+        }
+
+        for (String path : possiblePaths) {
+            java.io.File file = new java.io.File(path);
+            if (file.exists() && file.canExecute()) {
+                return path;
+            }
+        }
+
+        // Try `which codex` / `where codex` as fallback
+        try {
+            String whichCmd = os.contains("win") ? "where" : "which";
+            ProcessBuilder pb = new ProcessBuilder(whichCmd, "codex");
+            pb.redirectErrorStream(true);
+            Process process = pb.start();
+            java.io.BufferedReader reader = new java.io.BufferedReader(
+                    new java.io.InputStreamReader(process.getInputStream()));
+            String line = reader.readLine();
+            process.waitFor();
+            if (line != null && !line.trim().isEmpty() && new java.io.File(line.trim()).exists()) {
+                return line.trim();
+            }
+        } catch (Exception ignored) {
+        }
+
+        return null;
+    }
+
+    private void testCodexConnection(JButton button) {
+        String path = codexPathField.getText().trim();
+        if (path.isEmpty()) {
+            JOptionPane.showMessageDialog(this,
+                    "Please configure a path to the codex CLI binary.",
+                    "Configuration Required",
+                    JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        button.setEnabled(false);
+        button.setText("Testing...");
+        codexStatusLabel.setText("Checking...");
+        codexStatusLabel.setForeground(Color.GRAY);
+
+        SwingWorker<String, Void> worker = new SwingWorker<>() {
+            @Override
+            protected String doInBackground() {
+                llm.impl.CodexClient client = new llm.impl.CodexClient(path,
+                        settingsManager.getModel(LLMProvider.CODEX));
+                return client.getVersion();
+            }
+
+            @Override
+            protected void done() {
+                button.setEnabled(true);
+                button.setText("Test Connection");
+                try {
+                    String version = get();
+                    if (version != null) {
+                        codexStatusLabel.setText("Connected - " + version);
+                        codexStatusLabel.setForeground(new Color(0, 150, 0));
+                        JOptionPane.showMessageDialog(LLMSettingsPanel.this,
+                                "Codex CLI detected!\n\n" + version,
+                                "Success",
+                                JOptionPane.INFORMATION_MESSAGE);
+                    } else {
+                        codexStatusLabel.setText("Not connected - codex binary not working");
+                        codexStatusLabel.setForeground(new Color(200, 0, 0));
+                        JOptionPane.showMessageDialog(LLMSettingsPanel.this,
+                                "Failed to connect to Codex CLI.\n\n" +
+                                        "Make sure the path is correct and codex is properly installed.",
+                                "Error",
+                                JOptionPane.ERROR_MESSAGE);
+                    }
+                } catch (Exception ex) {
+                    codexStatusLabel.setText("Error: " + ex.getMessage());
+                    codexStatusLabel.setForeground(new Color(200, 0, 0));
+                }
+            }
+        };
+        worker.execute();
+    }
+
     private void testConnection(LLMProvider provider, JButton button) {
         if (!clientFactory.hasValidConfig(provider)) {
             String message = switch (provider) {
                 case OLLAMA -> "Please enter a valid Ollama base URL.";
                 case BEDROCK -> "Please configure AWS credentials (settings, environment variables, or ~/.aws/credentials via AWS_DEFAULT_PROFILE or default).";
                 case CLAUDE_CODE -> "Please configure a valid path to the claude CLI binary.";
+                case CODEX -> "Please set a valid path to the codex CLI binary.";
             };
             JOptionPane.showMessageDialog(this,
                     message,

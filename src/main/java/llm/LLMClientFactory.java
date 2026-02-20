@@ -4,6 +4,7 @@ import config.LLMProvider;
 import config.SettingsManager;
 import llm.impl.BedrockClient;
 import llm.impl.ClaudeCodeClient;
+import llm.impl.CodexClient;
 import llm.impl.OllamaClient;
 
 public class LLMClientFactory {
@@ -35,6 +36,10 @@ public class LLMClientFactory {
             );
             case CLAUDE_CODE -> new ClaudeCodeClient(
                     settingsManager.getClaudeCodePath(),
+                    model
+            );
+            case CODEX -> new CodexClient(
+                    settingsManager.getCodexPath(),
                     model
             );
         };
