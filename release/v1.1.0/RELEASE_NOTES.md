@@ -2,8 +2,8 @@
 
 ## Highlights
 
-- Added local **Claude Code CLI** provider support. Use your existing Claude Code subscription via local `claude` CLI login.
-- Added local **OpenAI Codex CLI** provider support. Use your existing OpenAI/Codex subscription via local `codex` CLI login.
+- Added local **Claude Code CLI** provider support via local `claude` CLI integration.
+- Added local **OpenAI Codex CLI** provider support via local `codex` CLI integration.
 - Added improved CLI detection and connection validation for both providers.
 - Improved chat input UX with clearer input border visibility.
 
@@ -42,6 +42,7 @@ codex exec --json --ephemeral --skip-git-repo-check \
 
 ## Setup Notes
 
+- These are local CLI integrations; users are responsible for complying with Anthropic/OpenAI applicable terms and policies for their account and usage.
 - **Detect** searches common install paths and PATH (`which`/`where`) for `claude`/`codex`.
 - **Test Connection** validates binary path and executes:
   - `claude --version`
