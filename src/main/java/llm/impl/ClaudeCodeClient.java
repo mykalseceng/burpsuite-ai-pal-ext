@@ -317,6 +317,10 @@ public class ClaudeCodeClient implements LLMClient {
         // Claude Code is an agent with access to Bash, Read, Write, etc.
         // Since we feed untrusted HTTP traffic into prompts, a malicious payload
         // could trick Claude into executing arbitrary commands without this flag.
+        // --tools "" removes all tools from the agent entirely.
+        // --allowedTools "" ensures no tools are auto-approved as a second layer.
+        command.add("--tools");
+        command.add("");
         command.add("--allowedTools");
         command.add("");
         return command;

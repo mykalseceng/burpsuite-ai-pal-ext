@@ -19,10 +19,12 @@ AI Pal runs Claude Code in prompt mode and explicitly disables tools:
 claude -p \
   --output-format json|stream-json \
   --model <selected-model> \
+  --tools "" \
   --allowedTools ""
 ```
 
-- `--allowedTools ""` disables agent tools to prevent prompt-injected tool execution.
+- `--tools ""` removes all tools from the agent to prevent prompt-injected tool execution.
+- `--allowedTools ""` ensures no tools are auto-approved as a second layer of defense.
 
 ### OpenAI Codex CLI invocation
 
